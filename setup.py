@@ -11,6 +11,7 @@ setup(
     author_email="contact@protonmail.com",
     url="https://github.com/ProtonMail/python-proton-core",
     install_requires=["requests", "bcrypt", "python-gnupg", "pyopenssl", "importlib-metadata; python_version < '3.8'"],
+    tests_requires=['pyotp'],
     entry_points={
         "proton_loader_keyring": [
             "json = proton.keyring.textfile:KeyringBackendJsonFiles"
