@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_namespace_packages
-from proton.constants import VERSION
 
 setup(
     name="proton-core",
@@ -15,6 +14,17 @@ setup(
     entry_points={
         "proton_loader_keyring": [
             "json = proton.keyring.textfile:KeyringBackendJsonFiles"
+        ],
+        "proton_loader_transport": [
+            "requests = proton.session.transports.requests:RequestsTransport",
+            "alternativerouting = proton.session.transports.alternativerouting:AlternativeRoutingTransport",
+            "aiohttp = proton.session.transports.aiohttp:AiohttpTransport",
+            "auto = proton.session.transports.auto:AutoTransport",
+        ],
+        "proton_loader_environment": [
+            "prod = proton.session.environments:ProdEnvironment",
+            "atlas = proton.session.environments:AtlasEnvironment",
+            "ci = proton.session.environments:CIEnvironment",
         ]
     },
     packages=find_namespace_packages(include=['proton.*']),

@@ -12,12 +12,12 @@ class RequestsTransport(Transport):
         self._s = requests.Session()
 
     @classmethod
-    def can_be_created(cls):
+    def _get_priority(cls):
         try:
             import requests
-            return True
+            return 3
         except ImportError:
-            return False
+            return None
 
 
     async def async_api_request(

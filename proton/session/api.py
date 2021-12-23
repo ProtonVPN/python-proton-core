@@ -72,12 +72,14 @@ class Session:
 
     @transport_factory.setter
     def transport_factory(self, new_transport_factory):
-        from .transports import TransportFactory, AutoTransport
+        from .transports import TransportFactory
+        from ..loader import Loader
 
         self.__transport = None
         # If we don't set a new transport factory, then let's create a default one
         if new_transport_factory is None:
-            self.__transport_factory = TransportFactory(AutoTransport)
+            default_transport = Loader.get('transport')
+            self.__transport_factory = TransportFactory(default_transport)
         elif isinstance(new_transport_factory, TransportFactory):
             self.__transport_factory = new_transport_factory
         else:
@@ -120,7 +122,8 @@ class Session:
     @property
     def environment(self):
         if self.__environment is None:
-            self.__environment = Environment.default_environment()
+            from proton.loader import Loader
+            self.__environment = Loader.get('environment')()
         return self.__environment
 
     @environment.setter

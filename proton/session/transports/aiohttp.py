@@ -41,6 +41,10 @@ class AiohttpTransport(Transport):
     def __init__(self, session):
         super().__init__(session)
 
+    @classmethod
+    def _get_priority(cls):
+        return 10
+
     @property
     def tls_pinning_hashes(self):
         return self._environment.tls_pinning_hashes

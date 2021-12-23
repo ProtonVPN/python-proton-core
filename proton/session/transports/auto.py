@@ -14,6 +14,10 @@ class AutoTransport(Transport):
     # We assume that a given transport fails after that number of seconds
     TIMEOUT_TRANSPORT = 15
 
+    @classmethod
+    def _get_priority(cls):
+        return 100
+
     def __init__(self, session):
         super().__init__(session)
 

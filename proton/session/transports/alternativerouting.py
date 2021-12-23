@@ -24,6 +24,10 @@ class AlternativeRoutingTransport(AiohttpTransport):
     DELAY_DNS_REQUEST = 2
     TIMEOUT_DNS_REQUEST = 10
 
+    @classmethod
+    def _get_priority(cls):
+        return 5
+
 
     def __init__(self, session):
         super().__init__(session)

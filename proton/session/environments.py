@@ -58,6 +58,10 @@ class Environment(metaclass=abc.ABCMeta):
 
 
 class ProdEnvironment(Environment):
+    @classmethod
+    def _get_priority(cls):
+        return 10
+
     @property
     def http_base_url(self):
         return "https://api.protonvpn.ch"
@@ -80,6 +84,14 @@ class ProdEnvironment(Environment):
         ])
 
 class AtlasEnvironment(Environment):
+    @classmethod
+    def _get_priority(cls):
+        import os
+        if os.environ.get('PROTON_API_ENVIRONMENT','').split(':')[0] == 'atlas':
+            return 100
+        else:
+            return -100
+
     @property
     def _atlas_scientist(self):
         import os
@@ -118,6 +130,14 @@ class AtlasEnvironment(Environment):
         return None
 
 class CIEnvironment(Environment):
+    @classmethod
+    def _get_priority(cls):
+        import os
+        if os.environ.get('PROTON_API_ENVIRONMENT','') == 'ci':
+            return 100
+        else:
+            return -100
+    
     @property
     def http_base_url(self):
         return f"https://154.16.88.126/api"
