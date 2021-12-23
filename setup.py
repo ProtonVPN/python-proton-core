@@ -1,16 +1,21 @@
 #!/usr/bin/env python
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 from proton.constants import VERSION
 
 setup(
     name="proton-core",
-    version=VERSION,
+    version="0.0.0",
     description="Proton Technologies API wrapper",
     author="Proton Technologies",
     author_email="contact@protonmail.com",
     url="https://github.com/ProtonMail/python-proton-core",
-    install_requires=["requests", "bcrypt", "python-gnupg", "pyopenssl"],
+    install_requires=["requests", "bcrypt", "python-gnupg", "pyopenssl", "importlib-metadata; python_version < '3.8'"],
+    entry_points={
+        "proton_loader_keyring": [
+            "json = proton.keyring.textfile:KeyringBackendJsonFiles"
+        ]
+    },
     packages=find_namespace_packages(include=['proton.*']),
     include_package_data=True,
     license="GPLv3",
