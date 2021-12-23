@@ -78,7 +78,7 @@ class Loader(metaclass=Singleton):
         if len(force_class) == 1:
             force_class = list(force_class)[0]
             if force_class in self.__known_types[type_name]:
-                acceptable_entry_points = [self.__known_types[type_name][force_class]]
+                acceptable_entry_points = [force_class]
         elif len(force_class) > 1:
             raise RuntimeError(f"Loader: PROTON_LOADER_OVERRIDES contains multiple force for {type_name}")
         else:
@@ -89,6 +89,7 @@ class Loader(metaclass=Singleton):
                     acceptable_entry_points.append(k)
 
         acceptable_classes = [(v._get_priority(), k, v) for k, v in self.__known_types[type_name].items() if k in acceptable_entry_points]
+        acceptable_classes += [(None, k, v) for k, v in self.__known_types[type_name].items() if k not in acceptable_entry_points]
         acceptable_classes_with_prio = [(priority, class_name, v) for priority, class_name, v in acceptable_classes if priority is not None]
         acceptable_classes_without_prio = [(priority, class_name, v) for priority, class_name, v in acceptable_classes if priority is None]
         acceptable_classes_with_prio.sort(reverse=True)
