@@ -141,13 +141,20 @@ class Session:
 
     @environment.setter
     def environment(self, newvalue):
-        if self.__environment is not None:
-            raise ValueError("Cannot change environment of an established session (that would create security issues)!")
         # Do nothing if we set to None
         if newvalue is None:
             return
+        if isinstance(newvalue, str):
+            newvalue = Environment.get_environment(newvalue)
         if not isinstance(newvalue, Environment):
             raise TypeError("environment should be a subclass of Environment")
+
+        #Same environment => nothing to do
+        if self.__environment == newvalue:
+            return
+        
+        if self.__environment is not None:
+            raise ValueError("Cannot change environment of an established session (that would create security issues)!")
         self.__environment = newvalue
 
     def __setstate__(self, data):

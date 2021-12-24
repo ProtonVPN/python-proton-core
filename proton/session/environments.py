@@ -97,7 +97,7 @@ class AtlasEnvironment(Environment):
     @property
     def _atlas_scientist(self):
         import os
-        environment = os.getenv('PROTON_API_ENVIRONMENT')
+        environment = os.getenv('PROTON_API_ENVIRONMENT', '')
         if not environment.startswith('atlas:'):
             return None
             

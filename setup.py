@@ -28,6 +28,9 @@ setup(
             "prod = proton.session.environments:ProdEnvironment",
             "atlas = proton.session.environments:AtlasEnvironment",
             "ci = proton.session.environments:CIEnvironment",
+        ],
+        "proton_loader_basicview": [
+            "cli = proton.views.basiccli:BasicCLIView"
         ]
     },
     packages=find_namespace_packages(include=['proton.*']),
