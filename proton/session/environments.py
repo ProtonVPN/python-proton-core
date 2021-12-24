@@ -57,6 +57,9 @@ class Environment(metaclass=abc.ABCMeta):
     def tls_pinning_hashes_ar(self):
         pass
 
+    def __eq__(self, other):
+        return self.name == other.name
+
 
 
 class ProdEnvironment(Environment):

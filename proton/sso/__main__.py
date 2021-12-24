@@ -9,6 +9,11 @@ from proton.sso.sso import ProtonSSO
 
 from ..views._base import BasicView
 
+import enum
+class ProtonSSOPresenterCredentialLogicState(enum.Enum):
+    CALL_BASE_FUNCTION = 0
+    NEEDS_AUTHENTICATE = 1
+    NEEDS_TWOFA = 2
 
 
 class ProtonSSOPresenter:
@@ -35,26 +40,41 @@ class ProtonSSOPresenter:
 
         @functools.wraps(base_function)
         def wrapped_function(self : 'ProtonSSOPresenter', *a, **kw):
+            
             from proton.session.exceptions import ProtonAPIAuthenticationNeeded, ProtonAPI2FANeeded, ProtonAPIMissingScopeError
+            state = ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION
             while True:
                 try:
-                    return base_function(self, *a, **kw)
+                    if state == ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION:
+                        return base_function(self, *a, **kw)
+                    elif state == ProtonSSOPresenterCredentialLogicState.NEEDS_AUTHENTICATE:
+                        account_name, password, twofa = self._view.ask_credentials(self._provided_account_name is None, True, False)
+                        if account_name is None:
+                            account_name = self._provided_account_name
+                        if password is None:
+                            break
+                        ret = self._session.authenticate(account_name, password)
+                        if ret:
+                            state = ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION
+                        else:
+                            self._view.display_error("Invalid credentials!")
+                            # Remain in same state
+                    elif state == ProtonSSOPresenterCredentialLogicState.NEEDS_TWOFA:
+                        account_name, password, twofa = self._view.ask_credentials(False, False, True)
+                        if twofa is None:
+                            break
+                        ret = self._session.provide_2fa(twofa)
+                        if ret:
+                            state = ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION
+                        else:
+                            self._view.display_error("Invalid 2FA code!")
+
                 except ProtonAPIAuthenticationNeeded:
-                    account_name, password, twofa = self._view.ask_credentials(self._provided_account_name is None, True, False)
-                    if account_name is None:
-                        account_name = self._provided_account_name
-                    if password is None:
-                        break
-                    ret = self._session.authenticate(account_name, password)
-                    if not ret:
-                        self._view.display_error("Invalid credentials!")
+                    state = ProtonSSOPresenterCredentialLogicState.NEEDS_AUTHENTICATE
+ 
                 except ProtonAPI2FANeeded:
-                    account_name, password, twofa = self._view.ask_credentials(False, False, True)
-                    if twofa is None:
-                        break
-                    ret = self._session.provide_2fa(twofa)
-                    if not ret:
-                        self._view.display_error("Invalid 2FA code!")
+                    state = ProtonSSOPresenterCredentialLogicState.NEEDS_TWOFA
+
 
         
         return wrapped_function

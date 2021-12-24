@@ -417,6 +417,19 @@ class Session:
                 return True
             
             return False
+        except ProtonAPIError as e:
+            if e.body_code == 8002:
+                # 2FA jail, we need to start over (beware, we might hit login jails too)
+                #Needs re-login
+                self.__UID = None
+                self.__AccessToken = None
+                self.__RefreshToken = None
+                self.__Scopes = None
+                self.__2FA = None
+                raise ProtonAPIAuthenticationNeeded.from_proton_api_error(e)
+            if e.http_code == 401:
+                return False
+            raise
         finally:
             self._requests_unlock(no_condition_check)
 

@@ -42,7 +42,21 @@ class TestSession(unittest.IsolatedAsyncioTestCase):
         assert s.needs_twofa
 
         import pyotp
+
+        #Invalid 2fa
+        try:
+            assert not await s.async_provide_2fa(pyotp.TOTP('4R5YJICSS6N72KNN3YRTEGLJCEKIAAAA').now())
+        except ProtonAPIAuthenticationNeeded:
+            # If we end up jailed, then we might get a 8002, so we need to start over
+            assert await s.async_authenticate('twofa', 'a')
+
+        # We should still need a 2fa
+        assert s.needs_twofa
+
+        # Valid 2FA this time
         await s.async_provide_2fa(pyotp.TOTP('4R5YJICSS6N72KNN3YRTEGLJCEKIMSKJ').now())
+
+        assert not s.needs_twofa
 
         d = await s.async_api_request('/vpn/v1/certificate/sessions')
 
