@@ -1,7 +1,7 @@
 from typing import *
 
 from proton import session
-from .exceptions import ProtonCryptoError, ProtonAPIError, ProtonAPIAuthenticationNeeded, ProtonAPI2FANeeded, ProtonAPIMissingScopeError
+from .exceptions import ProtonCryptoError, ProtonAPIError, ProtonAPIAuthenticationNeeded, ProtonAPI2FANeeded, ProtonAPIMissingScopeError, ProtonAPIHumanVerificationNeeded
 from .srp import User as PmsrpUser
 from .environments import Environment
 
@@ -259,6 +259,12 @@ class Session:
                     #Else, fail :-(
                     else:
                         raise ProtonAPIAuthenticationNeeded.from_proton_api_error(e)
+                #422 + 9001: Human verification needed
+                elif e.http_code == 422 and e.body_code == 9001:
+                    raise ProtonAPIHumanVerificationNeeded.from_proton_api_error(e)
+                #Invalid human verification token
+                elif e.body_code == 12087:
+                    pass
                 #These are codes which require and immediate retry
                 elif e.http_code in (408, 502):
                     continue
@@ -534,6 +540,19 @@ class Session:
 
     #FIXME: implement unlock
 
+    async def async_human_verif_request_code(self, address=None, phone=None):
+        """ Request a verification code """
+        assert address is not None ^ phone is not None
+
+        if address is not None:
+            data = {'Type': 'email', 'Destination': {'Address': address}}
+        elif phone is not None:
+            data = {'Type': 'sms', 'Destination': {'Phone': phone}}
+        
+        return await self.async_api_request('/users/code', data).get('Code', 0) == 1000
+
+    async def async_human_verif_provide_token(self, )
+    
 
     # Wrappers to provide non-asyncio API
     api_request = sync_wrapper(async_api_request)
@@ -542,5 +561,6 @@ class Session:
     logout = sync_wrapper(async_logout)
     refresh = sync_wrapper(async_refresh)
     lock = sync_wrapper(async_lock)
+    request_code = sync_wrapper(async_request_code)
 
 

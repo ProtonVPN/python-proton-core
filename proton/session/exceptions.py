@@ -58,3 +58,17 @@ class ProtonAPIMissingScopeError(ProtonAPIError):
     """We don't have a required scope.
     
     This might be because of user rights, but also might require a call to unlock."""
+
+class ProtonAPIHumanVerificationNeeded(ProtonAPIError):
+    """Human verification is needed for this call to be able to happen."""
+    def __init__(self, *a, **kw):
+        print("ProtonAPIHumanVerificationNeeded", *a, **kw)
+        super().__init__(*a,**kw)
+
+    @property
+    def HumanVerificationToken(self):
+        return self.json_data.get('Details', {}).get('HumanVerificationToken', None)
+
+    @property
+    def Methods(self):
+        return self.json_data.get('Details', {}).get('Methods', [])
