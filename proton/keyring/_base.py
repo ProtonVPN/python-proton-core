@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import re
 
 class KeyringException(Exception):
     pass
@@ -26,16 +27,12 @@ class KeyringBackend(metaclass=ABCMeta):
     def _ensure_key_is_valid(self, key):
         if type(key) != str:
             raise TypeError(f"Invalid key for keyring: {key!r}")
-        if not key.isalnum():
+        if not re.match(r'^[a-z0-9-]+$', key):
             raise ValueError("Keyring key should be alphanumeric")
 
     def _ensure_value_is_valid(self, value):
-        if not isinstance(value, dict):
-            msg = "Provided value {} is not a valid type (expect {})".format(
-                value, dict
-            )
-
-            raise TypeError(msg)
+        if not isinstance(value, dict) and not isinstance(value, list):
+            raise TypeError(f"Provided value {value} is not a valid type (expect dict or list)")
 
     @abstractmethod
     def __getitem__(self, key):

@@ -6,7 +6,8 @@ class KeyringBackendJsonFiles(KeyringBackend):
     def __init__(self):
         super().__init__()
 
-        self.__path_base = '/tmp'
+        from ..utils import ExecutionEnvironment
+        self.__path_base = ExecutionEnvironment().path_config
 
     @classmethod
     def _get_priority(cls) -> int:

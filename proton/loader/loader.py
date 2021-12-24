@@ -1,12 +1,7 @@
 import os
 import warnings
 
-class Singleton(type):
-    _instances = {}
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+from ..utils import Singleton
 
 class Loader(metaclass=Singleton):
     """This is the loader for pluggable components. These components are identified by a type name (string)
@@ -29,7 +24,7 @@ class Loader(metaclass=Singleton):
     ```
 
     The class pointed by these entrypoints should implement the following class methods:
-    * _get_priority(): return a numeric value, larger ones have higher priority. If None, then this class won't be considered
+    * _get_priority(): return a numeric value, larger ones have higher priority. If it's None, then this class won't be considered
     * _validate(): check if the object can indeed be used (might be expensive/annoying). If it returns False, then the backend won't be considered for the rest of the session.
 
     If _validate() is not defined, then it's assumed that it will always succeed.
