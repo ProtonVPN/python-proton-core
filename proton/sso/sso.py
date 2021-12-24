@@ -2,10 +2,16 @@ import os, fcntl, re, base64
 
 # We don't necessarily need it to be a singleton, it doesn't harm in itself if multiple instances are created
 class ProtonSSO:
-    def __init__(self):
+    def __init__(self, appversion : str = "Other", user_agent:str="None"):
+        # Store appversion and user_agent for subsequent sessions
+        self._appversion = appversion
+        self._user_agent = user_agent
+
         from ..utils import ExecutionEnvironment
         self._adv_locks_path = ExecutionEnvironment().path_runtime
         self._adv_locks = {}
+
+        self._session_data_cache = {}
 
         # This is a global lock, we use it when we modify the indexes
         self._global_adv_lock = open(os.path.join(self._adv_locks_path, f'proton-sso.lock'), 'w')
@@ -65,6 +71,36 @@ class ProtonSSO:
         finally:
             fcntl.flock(self._global_adv_lock, fcntl.LOCK_UN)
 
+    def get_session(self, account_name):
+        from ..session import Session
+
+        session = Session(self._appversion, self._user_agent)
+        session.register_persistence_observer(self)
+
+        # If we have an account, then let's fetch the data from it. Otherwise we just ignore and return a blank session
+        if account_name is not None:
+            try:
+                session_data = self._get_session_data(account_name)
+            except KeyError:
+                session_data = None
+        else:
+            session_data = None
+
+        if session_data is not None:
+            session.__setstate__(session_data)
+        
+        return session
+
+    def get_default_session(self):
+        sessions = self.sessions
+        if len(sessions) == 0:
+            account_name = None
+        else:
+            account_name = sessions[0]
+
+        return self.get_session(account_name)
+            
+
 
     def _get_session_data(self, account_name):
         "Get data of a session, returns an empty dict if no data is present"
@@ -74,17 +110,32 @@ class ProtonSSO:
             return {}
 
 
-    def _acquire_session_lock(self, account_name):
+    def _acquire_session_lock(self, account_name, current_data):
+        if account_name is None:
+            # Don't do anything, we don't know the account yet!
+            return
+
         account_name = self.__normalize_account_name(account_name)
         self._adv_locks[account_name] = open(os.path.join(self._adv_locks_path, f'proton-sso-{self.__encode_name(account_name)}.lock'), 'w')
         # This is a blocking call. 
         # FIXME: this is Linux specific
         fcntl.flock(self._adv_locks[account_name], fcntl.LOCK_EX)
-        pass
+
+        self._session_data_cache[account_name] = current_data
+
 
     def _release_session_lock(self, account_name, new_data):
+        if account_name is None:
+            # Don't do anything, we don't know the account yet!
+            return
+
         account_name = self.__normalize_account_name(account_name)
-        assert account_name in self._adv_locks, f"Unlocking account {account_name}, that we haven't locked?"
+
+        # Don't do anything if data hasn't changed
+        if account_name in self._session_data_cache:
+            if self._session_data_cache[account_name] == new_data:
+                return
+            del self._session_data_cache[account_name]
 
         # We might be reordering accounts, so let's lock the full sso so we can't have concurrent actions here
         fcntl.flock(self._global_adv_lock, fcntl.LOCK_EX)
@@ -129,6 +180,6 @@ class ProtonSSO:
         finally:
             fcntl.flock(self._global_adv_lock, fcntl.LOCK_UN)
 
-        # FIXME: this is Linux specific
-        fcntl.flock(self._adv_locks[account_name], fcntl.LOCK_UN)
-        pass
+        if account_name in self._adv_locks:
+            # FIXME: this is Linux specific
+            fcntl.flock(self._adv_locks[account_name], fcntl.LOCK_UN)

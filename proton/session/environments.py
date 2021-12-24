@@ -10,6 +10,8 @@ class Environment(metaclass=abc.ABCMeta):
 
     @classmethod
     def get_environment(cls, name: str) -> Optional["Environment"]:
+        if name is None:
+            return None
         if cls.__name__.lower() == name + 'environment':
             return cls
 

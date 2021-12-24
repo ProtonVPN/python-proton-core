@@ -1,4 +1,6 @@
 from typing import *
+
+from proton import session
 from .exceptions import ProtonCryptoError, ProtonAPIError, ProtonAPIAuthenticationNeeded, ProtonAPI2FANeeded, ProtonAPIMissingScopeError
 from .srp import User as PmsrpUser
 from .environments import Environment
@@ -20,7 +22,7 @@ def sync_wrapper(f):
         
         loop = asyncio.new_event_loop()
         try:
-            return loop.run_until_complete(f(*a, **kw, no_condition_check=True))
+            return loop.run_until_complete(f(*a, **kw))
         finally:
             loop.close()
     return wrapped_f
@@ -44,6 +46,8 @@ class Session:
         self.__RefreshToken = None
         self.__Scopes = None
 
+        self.__AccountName = None
+
         # Temporary storage for 2FA object
         self.__2FA = None
 
@@ -65,6 +69,11 @@ class Session:
 
         #Lazy initialized by environment:
         self.__environment = None
+
+        self.__persistence_observers = []
+
+    def register_persistence_observer(self, observer):
+        self.__persistence_observers.append(observer)
 
     @property
     def transport_factory(self):
@@ -114,6 +123,10 @@ class Session:
         return self.__Scopes
 
     @property
+    def AccountName(self):
+        return self.__AccountName
+
+    @property
     def needs_twofa(self):
         if self.Scopes is None:
             return False
@@ -130,32 +143,37 @@ class Session:
     def environment(self, newvalue):
         if self.__environment is not None:
             raise ValueError("Cannot change environment of an established session (that would create security issues)!")
+        # Do nothing if we set to None
+        if newvalue is None:
+            return
         if not isinstance(newvalue, Environment):
             raise TypeError("environment should be a subclass of Environment")
         self.__environment = newvalue
 
     def __setstate__(self, data):
-        self.__appversion = data.get('appversion', 'Other')
-        self.__user_agent = data.get('user_agent', 'None')
         self.__UID = data.get('UID', None)
         self.__AccessToken = data.get('AccessToken', None)
         self.__RefreshToken = data.get('RefreshToken', None)
         self.__Scopes = data.get('Scopes', None)
+        self.__AccountName = data.get('AccountName', None)
         #Reset transport (user agent etc might have changed)
         self.__transport = None
         #get environment as stored in the session
-        self.__environment = Environment.get_environment(data.get('Environment', 'prod'))
+        self.__environment = Environment.get_environment(data.get('Environment', None))
 
     def __getstate__(self):
+        # If we don't have an UID, then we're not logged in and we don't want to store a state
+        if self.UID is None:
+            return {}
+
         data = {
-            'appversion': self.__appversion,
-            'user_agent': self.__user_agent,
             #Session data
             'UID': self.UID,
             'AccessToken': self.AccessToken,
             'RefreshToken': self.RefreshToken,
             'Scopes': self.Scopes,
-            'Environment': self.environment.name
+            'Environment': self.environment.name,
+            'AccountName': self.__AccountName
         }
 
         return data
@@ -179,6 +197,12 @@ class Session:
             self.__can_run_requests = asyncio.Event()
         self.__can_run_requests.clear()
 
+        # Lock observers (we're about to modify the session)
+        account_name = self.AccountName
+        session_data = self.__getstate__()
+        for observer in self.__persistence_observers:
+            observer._acquire_session_lock(account_name, session_data)
+
     def _requests_unlock(self, no_condition_check=False):
         if no_condition_check:
             return
@@ -186,6 +210,13 @@ class Session:
         if self.__can_run_requests is None:
             self.__can_run_requests = asyncio.Event()
         self.__can_run_requests.set()
+
+        # Unlock observers (we might have modified the session)
+        # It's important to do it in reverse order, as otherwise there's a risk of deadlocks
+        account_name = self.AccountName
+        session_data = self.__getstate__()
+        for observer in reversed(self.__persistence_observers):
+            observer._release_session_lock(account_name, session_data)
 
     async def _requests_wait(self, no_condition_check=False):
         if no_condition_check or self.__can_run_requests is None:
@@ -343,6 +374,7 @@ class Session:
             self.__AccessToken = auth_response['AccessToken']
             self.__RefreshToken = auth_response['RefreshToken']
             self.__Scopes = auth_response["Scopes"]
+            self.__AccountName = username
 
             if '2FA' in auth_response:
                 self.__2FA = auth_response['2FA']
