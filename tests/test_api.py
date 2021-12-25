@@ -4,8 +4,6 @@ import base64
 from testdata import srp_instances, modulus_instances
 from testserver import TestServer
 from proton.session.srp.util import PM_VERSION
-from proton.session.srp._ctsrp import User as CTUser
-from proton.session.srp._pysrp import User as PYUser
 from proton.session.api import Session
 
 
@@ -148,11 +146,17 @@ class SRPTestCases:
 
 class TestCTSRPClass(SRPTestCases.SRPTestBase):
     def setUp(self):
+        try:
+            from proton.session.srp._ctsrp import User as CTUser
+        except (ImportError, OSError):
+            self.skipTest("Couldn't load C implementation of the SRP code, so skip this test.")
+            
         self.user = CTUser
 
 
 class TestPYSRPClass(SRPTestCases.SRPTestBase):
     def setUp(self):
+        from proton.session.srp._pysrp import User as PYUser
         self.user = PYUser
 
 
