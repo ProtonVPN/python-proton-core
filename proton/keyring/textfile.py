@@ -3,6 +3,10 @@ import os
 from ._base import KeyringBackend
 
 class KeyringBackendJsonFiles(KeyringBackend):
+    """Primitive data storage implementation, to be used when no better keyring is present.
+
+    It stores each entry a json in the configuration path.
+    """
     def __init__(self):
         super().__init__()
 

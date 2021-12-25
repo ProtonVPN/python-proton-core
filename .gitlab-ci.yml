@@ -52,7 +52,18 @@ bandit-sast:
     reports:
       junit: bandit.xml
 
-
+pages:
+  image: python:3.10.0-slim-bullseye
+  script:
+  - pip install -r requirements.txt
+  - pip install sphinx sphinx-rtd-theme
+  - pip install .
+  - sphinx-build -b html docs/ public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
 
 #test-buster:
 #  extends: .test

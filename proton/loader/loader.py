@@ -11,30 +11,41 @@ PluggableComponentName = namedtuple('PluggableComponentName', ['type_name', 'cla
 class Loader(metaclass=Singleton):
     """This is the loader for pluggable components. These components are identified by a type name (string)
     and a class name (also a string).
-    
-    You can influence which component to use using the PROTON_LOADER_OVERRIDES environment variable. It's a comma separated list
-    of type_name=class_name (to force class_name to be used) and type_name=-class_name (to exclude class_name from the options considered).
 
-    To find the candidates, Loader will use entry points, that are to be defined in setup.py, as follows:
-    ```
-    setup(
-        [...],
-        entry_points={
-            "proton_loader_keyring": [
-                "json = proton.keyring.textfile:KeyringBackendJsonFiles"
-            ]
-        },
-        [...]
-    )
-    ```
+    In normal use, one will only use :meth:`get`, as follows:
+
+    .. code-block::
+
+        from proton.loader import Loader
+        # Note the parenthesis to instanciate an object, as Loader.get() returns a class.
+        my_keyring = Loader.get('keyring')()
+    
+    You can influence which component to use using the ``PROTON_LOADER_OVERRIDES`` environment variable. It's a comma separated list
+    of ``type_name=class_name`` (to force ``class_name`` to be used) and ``type_name=-class_name`` (to exclude ``class_name`` from the options considered).
+
+    To find the candidates, ``Loader`` will use entry points, that are to be defined in setup.py, as follows:
+
+    .. code-block::
+
+        setup(
+            #[...],
+            entry_points={
+                "proton_loader_keyring": [
+                    "json = proton.keyring.textfile:KeyringBackendJsonFiles"
+                ]
+            },
+            #[...]
+        )
 
     The class pointed by these entrypoints should implement the following class methods:
-    * _get_priority(): return a numeric value, larger ones have higher priority. If it's None, then this class won't be considered
-    * _validate(): check if the object can indeed be used (might be expensive/annoying). If it returns False, then the backend won't be considered for the rest of the session.
 
-    If _validate() is not defined, then it's assumed that it will always succeed.
+    * :meth:`_get_priority`: return a numeric value, larger ones have higher priority. If it's ``None``, then this class won't be considered
+    * :meth:`_validate`: check if the object can indeed be used (might be expensive/annoying). If it returns ``False``, then the backend won't be considered for the rest of the session.
 
-    To display the list of valid values, you can use `python3 -m proton.loader`.
+    If :meth:`_validate` is not defined, then it's assumed that it will always succeed.
+
+    To display the list of valid values, you can use ``python3 -m proton.loader``.
+    
     """
 
     __loader_prefix = 'proton_loader_'
@@ -51,20 +62,30 @@ class Loader(metaclass=Singleton):
         self.__name_resolution_cache = {}
 
     @property
-    def type_names(self): 
-        """ Return a list of the known type names """
+    def type_names(self) -> list[str]: 
+        """
+        :return: Return a list of the known type names
+        :rtype: list[str]
+        """
         return [x[len(self.__loader_prefix):] for x in self.__metadata.entry_points().keys() if x.startswith(self.__loader_prefix)]
 
     def _get_metadata_group_for_typename(self, type_name: str) -> str:
         return self.__loader_prefix + type_name
 
-    def reset(self):
-        """Erase the loader cache"""
+    def reset(self) -> None:
+        """Erase the loader cache. (useful for tests)"""
         self.__known_types = {}
         self.__name_resolution_cache = {}
 
     def get_all(self, type_name: str) -> list[PluggableComponent]:
-        """Get a list of tuples for all the implementations for type_name."""
+        """Get a list of all implementations for ``type_name``.
+
+        :param type_name: type of implementation to query for
+        :type type_name: str
+        :raises RuntimeError: if ``PROTON_LOADER_OVERRIDES`` has conflicts
+        :return: Implementation for type_name (this includes the ones that are disabled)
+        :rtype: list[PluggableComponent]
+        """
 
         # If we don't have already loaded the entry points, just do so
         if type_name not in self.__known_types:
@@ -108,6 +129,16 @@ class Loader(metaclass=Singleton):
         return acceptable_classes_with_prio + acceptable_classes_without_prio
 
     def get(self, type_name: str, class_name: Optional[str] = None) -> type:
+        """Get the implementation for type_name.
+
+        :param type_name: extension type
+        :type type_name: str
+        :param class_name: specific implementation to get, defaults to None (use preferred one)
+        :type class_name: Optional[str], optional
+        :raises RuntimeError: if no valid implementation can be found, or if PROTON_LOADER_OVERRIDES is invalid.
+        :return: the class implementing type_name. (careful: it's a class, not an object!)
+        :rtype: class
+        """
         acceptable_classes = self.get_all(type_name)
 
         for entry in acceptable_classes:
@@ -134,11 +165,25 @@ class Loader(metaclass=Singleton):
         raise RuntimeError(f"Loader: couldn't find an acceptable implementation for {type_name}.")
 
     def set_all(self, type_name: str, implementations : dict[str, type]):
-        """This method is mostly useful only for testing, it allows to set a defined set of implementation for a given type_name."""
+        """Set a defined set of implementation for a given ``type_name``.
+
+        This method is probably useful only for testing.
+
+        :param type_name: Type
+        :type type_name: str
+        :param implementations: Dictionary implementation name -> implementation class
+        :type implementations: dict[str, class]
+        """
         self.__known_types[type_name] = implementations
         for class_name, cls in implementations.items():
             self.__name_resolution_cache[cls] = PluggableComponentName(type_name, class_name)
 
-    def get_name(self, cls) -> Optional[PluggableComponentName]:
-        """Return the type_name and class_name corresponding to the class."""
+    def get_name(self, cls: type) -> Optional[PluggableComponentName]:
+        """Return the type_name and class_name corresponding to the class in parameter.
+
+        This is useful for inverse lookups (i.e. for logs for instance)
+
+        :return: ``Tuple (type_name, class_name)``
+        :rtype: Optional[PluggableComponentName]
+        """
         return self.__name_resolution_cache.get(cls, None)

@@ -7,3 +7,5 @@ MANIFEST
 *.lock
 __SOURCE_APP
 .env
+cov.xml
+html

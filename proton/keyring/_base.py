@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 import re
+from typing import Union, Optional
 
 class KeyringException(Exception):
     pass
@@ -16,12 +17,8 @@ class KeyringBackend(metaclass=ABCMeta):
         pass
 
     @classmethod
-    def _get_priority(cls) -> int:
-        """
-        Return the priority of the specific class
-
-        (loader will use the object with highest non-None priority)
-        """
+    def _get_priority(cls) -> Optional[float]:
+        """Return the priority of the specific class (see :class:`proton.loader.loader.Loader`)"""
         return None
 
     def _ensure_key_is_valid(self, key):
@@ -35,16 +32,29 @@ class KeyringBackend(metaclass=ABCMeta):
             raise TypeError(f"Provided value {value} is not a valid type (expect dict or list)")
 
     @abstractmethod
-    def __getitem__(self, key):
-        """Get an item from the keyring"""
+    def __getitem__(self, key: str):
+        """Get an item from the keyring
+
+        :param key: Key (lowercaps alphanumeric, dashes are allowed)
+        :type key: str
+        """
         pass
 
     @abstractmethod
-    def __delitem__(self, key):
-        """Remove an item from the keyring"""
+    def __delitem__(self, key: str):
+        """Remove an item from the keyring
+
+        :param key: Key (lowercaps alphanumeric, dashes are allowed)
+        :type key: str"""
         pass
 
     @abstractmethod
-    def __setitem__(self, key, value):
-        """Add or replace an item in the keyring"""
+    def __setitem__(self, key: str, value: Union[dict, list]):
+        """Add or replace an item in the keyring
+
+        :param key: Key (lowercaps alphanumeric, dashes are allowed)
+        :type key: str
+        :param value: Value to set. It has to be json-serializable.
+        :type value: dict or list
+        """
         pass
