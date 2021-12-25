@@ -13,7 +13,7 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
         test_data_2 = {'test2': 'data2'}
 
         for i in range(2):
-            sso._acquire_session_lock(fake_account_name)
+            sso._acquire_session_lock(fake_account_name, {})
             sso._release_session_lock(fake_account_name,test_data_1)
 
             assert fake_account_name in sso.sessions
@@ -22,7 +22,7 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
             sso.set_default_account(fake_account_name)
             assert sso.sessions[0] == fake_account_name
 
-            sso._acquire_session_lock(fake_account2_name)
+            sso._acquire_session_lock(fake_account2_name, {})
             sso._release_session_lock(fake_account2_name,test_data_2)
 
             assert fake_account_name in sso.sessions
@@ -37,7 +37,7 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
             sso.set_default_account(fake_account_name)
             assert sso.sessions[0] == fake_account_name
             
-            sso._acquire_session_lock(fake_account_name)
+            sso._acquire_session_lock(fake_account_name, test_data_1)
             sso._release_session_lock(fake_account_name,test_data_2)
 
             assert sso.sessions[0] == fake_account_name
@@ -46,7 +46,7 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
             assert sso._get_session_data(fake_account_name) == test_data_2
             assert sso._get_session_data(fake_account2_name) == test_data_2
 
-            sso._acquire_session_lock(fake_account_name)
+            sso._acquire_session_lock(fake_account_name,test_data_2)
             sso._release_session_lock(fake_account_name, None)
 
             with self.assertRaises(KeyError):
@@ -56,7 +56,7 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
             assert sso._get_session_data(fake_account_name) == {}
             assert sso._get_session_data(fake_account2_name) == test_data_2
 
-            sso._acquire_session_lock(fake_account2_name)
+            sso._acquire_session_lock(fake_account2_name, test_data_2)
             sso._release_session_lock(fake_account2_name, None)
 
             assert fake_account_name not in sso.sessions
