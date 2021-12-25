@@ -11,16 +11,17 @@
   - echo 'Acquire::https::Verify-Host "false";' >> /etc/apt/apt.conf.d/99gitlab
   - echo 'Dpkg::Use-Pty "0";' >> /etc/apt/apt.conf.d/99gitlab
   - apt-get update || true
-  - apt-get install -y python3 python3-pytest python3-pytest-cov python3-gnupg python3-bcrypt python3-requests python3-aiohttp python3-openssl python3-pip
-  - apt-get install -y procps
+  - apt-get install -y procps proxychains python3 python3-pytest python3-pytest-cov python3-gnupg python3-bcrypt python3-requests python3-aiohttp python3-openssl python3-pip python3-pyotp
   - sysctl -w net.ipv6.conf.all.disable_ipv6=0
   - sysctl -w net.ipv6.conf.default.disable_ipv6=0
+  # FIXME: would be nice to resolve proxy.plabs.ch instead of hardcoding one value, or even better to parse http_proxy
+  - echo -e "[ProxyList]\nhttp 172.20.0.127 3128\n" > /etc/proxychains.conf
   script:
   # We need to install it otherwise entry points are not accessible by testsuite
   # FIXME: we need to fill loader with static data to make sure our test is reproductible
   # then we won't need that
   - pip3 install --user --editable .
-  - python3 -m pytest --cov=proton --junitxml=report.xml --cov-report xml:cov.xml --cov-report=term tests/
+  - proxychains python3 -m pytest --cov=proton --junitxml=report.xml --cov-report xml:cov.xml --cov-report=term tests/
   artifacts:
     reports:
       cobertura: cov.xml
@@ -52,10 +53,10 @@ bandit-sast:
 
 
 
-test-buster:
-  extends: .test
-  variables:
-    RELEASE: 'buster'
+#test-buster:
+#  extends: .test
+#  variables:
+#    RELEASE: 'buster'
 
 test-bullseye:
   extends: .test
