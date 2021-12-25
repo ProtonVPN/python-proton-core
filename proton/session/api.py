@@ -279,7 +279,7 @@ class Session:
         if e.http_headers.get('retry-after','-').isnumeric():
             await asyncio.sleep(int(e.http_headers.get('retry-after')))
         else:
-            await asyncio.sleep(3+random.random()*5)
+            await asyncio.sleep(3+random.random()*5) # nosec (no crypto risk here of using an unsafe generator)
 
     async def __async_api_request_internal(
         self, endpoint,
@@ -541,8 +541,8 @@ class Session:
     #FIXME: implement unlock
 
     async def async_human_verif_request_code(self, address=None, phone=None):
-        """ Request a verification code """
-        assert address is not None ^ phone is not None
+        """Request a verification code. Either address (email address) or phone (phone number) should be specified."""
+        assert address is not None ^ phone is not None # nosec (we use email validation by default if both are provided, but it's not super clean if the dev doesn't know about it)
 
         if address is not None:
             data = {'Type': 'email', 'Destination': {'Address': address}}

@@ -30,7 +30,7 @@ elif 'win' in platform:
     for d in ('libeay32.dll', 'libssl32.dll', 'ssleay32.dll'):
         try:
             dlls.append(ctypes.cdll.LoadLibrary(d))
-        except Exception:
+        except Exception: #nosec
             pass
 else:
     try:
@@ -69,7 +69,7 @@ def load_func(name, args, returns=ctypes.c_int):
             f.restype = returns
             d[name] = f
             return
-        except Exception:
+        except Exception: #nosec
             pass
     raise ImportError('Unable to load required functions from SSL dlls')
 

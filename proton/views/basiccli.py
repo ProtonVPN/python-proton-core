@@ -49,7 +49,7 @@ class BasicCLIView(BasicView):
 
             if ask_to_select_one:
                 while True:
-                    user_input = input("Please select a session: ")
+                    user_input = input("Please select a session: ") # nosec (Python 3 only code)
                     if user_input.isnumeric():
                         user_input = int(user_input)
                         if user_input >= 1 and user_input <= len(sorted_sessions):
@@ -67,7 +67,7 @@ class BasicCLIView(BasicView):
         password = None
         twofa = None
         if ask_login:
-            login = input("Please enter your user name: ")
+            login = input("Please enter your user name: ") # nosec (Python 3 only code)
             if login == '':
                 login = None
         if ask_password:
@@ -75,7 +75,7 @@ class BasicCLIView(BasicView):
             if password == '':
                 password = None
         if ask_2fa:
-            twofa = input("Please enter your 2FA code: ")
+            twofa = input("Please enter your 2FA code: ") # nosec (Python 3 only code)
             if twofa == '' or not twofa.isnumeric():
                 twofa = None
         return login, password, twofa

@@ -5,7 +5,7 @@ class Environment(metaclass=abc.ABCMeta):
     @property
     def name(cls):
         cls_name = cls.__class__.__name__
-        assert cls_name.endswith('Environment'), "Incorrectly named class"
+        assert cls_name.endswith('Environment'), "Incorrectly named class" # nosec (dev should ensure that to avoid issues)
         return cls_name[:-11].lower()
 
     @classmethod

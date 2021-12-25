@@ -44,7 +44,7 @@ class AutoTransport(Transport):
     async def _ping_via_transport(self, timeout, transport):
         await asyncio.sleep(timeout)
         result = await asyncio.wait_for(transport.async_api_request('/tests/ping'), self.TIMEOUT_TRANSPORT)
-        assert result == {"Code": 1000}, "For some reason, we didn't get {\"Code\":1000} ?!"
+        assert result == {"Code": 1000}, "For some reason, we didn't get {\"Code\":1000} ?!" # nosec (really just a sanity check, ping always return 1000 per spec)
         return transport
 
     async def find_available_transport(self):
