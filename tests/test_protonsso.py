@@ -78,4 +78,40 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
         assert await s.async_authenticate('pro','pro')
         assert await s.async_api_request('/tests/ping') == {'Code': 1000}
         assert await s.async_logout()
-        
+
+    async def test_default_session(self):
+        from proton.sso import ProtonSSO
+        from proton.session.exceptions import ProtonAPIAuthenticationNeeded
+
+        os.environ['PROTON_API_ENVIRONMENT'] = 'atlas'
+
+        sso = ProtonSSO()
+        while len(sso.sessions) > 0:
+            await sso.get_default_session().async_logout()
+
+        assert len(sso.sessions) == 0
+        s = sso.get_default_session()
+        assert (await s.async_api_request('/tests/ping'))['Code'] == 1000
+
+        assert len(sso.sessions) == 0
+        assert await s.async_authenticate('pro','pro')
+        assert len(sso.sessions) == 1
+        assert s.AccountName == 'pro'
+
+        assert (await s.async_api_request('/users'))['Code'] == 1000
+
+        sso2 = ProtonSSO()
+        assert len(sso2.sessions) == 1
+
+        s2 = sso2.get_default_session()
+        assert s2.AccountName == 'pro'
+        await s2.async_logout()
+
+        assert len(sso2.sessions) == 0
+        assert len(sso.sessions) == 0
+
+        with self.assertRaises(ProtonAPIAuthenticationNeeded):
+            assert (await s.async_api_request('/users'))['Code'] == 1000
+
+
+
