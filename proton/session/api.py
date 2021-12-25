@@ -264,7 +264,7 @@ class Session:
                     raise ProtonAPIHumanVerificationNeeded.from_proton_api_error(e)
                 #Invalid human verification token
                 elif e.body_code == 12087:
-                    pass
+                    raise ProtonAPIHumanVerificationNeeded.from_proton_api_error(e)
                 #These are codes which require and immediate retry
                 elif e.http_code in (408, 502):
                     continue
@@ -551,7 +551,8 @@ class Session:
         
         return await self.async_api_request('/users/code', data).get('Code', 0) == 1000
 
-    async def async_human_verif_provide_token(self, )
+    async def async_human_verif_provide_token(self, method, token):
+        pass
     
 
     # Wrappers to provide non-asyncio API
@@ -561,6 +562,7 @@ class Session:
     logout = sync_wrapper(async_logout)
     refresh = sync_wrapper(async_refresh)
     lock = sync_wrapper(async_lock)
-    request_code = sync_wrapper(async_request_code)
+    human_verif_request_code = sync_wrapper(async_human_verif_request_code)
+    human_verif_provide_token = sync_wrapper(async_human_verif_provide_token)
 
 
