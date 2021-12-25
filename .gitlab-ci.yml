@@ -11,7 +11,7 @@
   - echo 'Acquire::https::Verify-Host "false";' >> /etc/apt/apt.conf.d/99gitlab
   - echo 'Dpkg::Use-Pty "0";' >> /etc/apt/apt.conf.d/99gitlab
   - apt-get update || true
-  - apt-get install -y python3 python3-pytest python3-pytest-cov python3-gnupg python3-bcrypt python3-requests python3-aiohttp libssl1.1
+  - apt-get install -y python3 python3-pytest python3-pytest-cov python3-gnupg python3-bcrypt python3-requests python3-aiohttp python3-openssl
   - apt-get install -y procps
   - sysctl -w net.ipv6.conf.all.disable_ipv6=0
   - sysctl -w net.ipv6.conf.default.disable_ipv6=0
