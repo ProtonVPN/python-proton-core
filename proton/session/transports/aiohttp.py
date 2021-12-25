@@ -22,6 +22,9 @@ class AiohttpCertkeyFingerprint(aiohttp.Fingerprint):
     def check(self, transport: asyncio.Transport) -> None:
         if not transport.get_extra_info("sslcontext"):
             return
+        # Can't check anything if we don't have fingerprints
+        if self._fingerprints is None:
+            return
         sslobj = transport.get_extra_info("ssl_object")
         cert = sslobj.getpeercert(binary_form=True)
 

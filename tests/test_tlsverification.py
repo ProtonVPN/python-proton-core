@@ -9,6 +9,24 @@ class TestTLSValidation(unittest.IsolatedAsyncioTestCase):
         s.environment = ProdEnvironment()
         assert await s.async_api_request('/tests/ping') == {'Code': 1000}
 
+    async def test_without_pinning(self):
+        from proton.session import Session
+        from proton.session.environments import ProdEnvironment
+
+
+        class ProdWithoutPinningEnvironment(ProdEnvironment):
+            @property
+            def tls_pinning_hashes(self):
+                return None
+
+            @property
+            def tls_pinning_hashes_ar(self):
+                return None
+
+        s = Session()
+        s.environment = ProdWithoutPinningEnvironment()
+        assert await s.async_api_request('/tests/ping') == {'Code': 1000}
+
 
     async def test_bad_pinning_url_changed(self):
         from proton.session import Session

@@ -63,3 +63,19 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
             assert fake_account2_name not in sso.sessions
             assert sso._get_session_data(fake_account_name) == {}
             assert sso._get_session_data(fake_account2_name) == {}
+
+    async def test_with_real_session(self):
+        from proton.sso import ProtonSSO
+
+        os.environ['PROTON_API_ENVIRONMENT'] = 'atlas'
+
+        sso = ProtonSSO()
+
+        if 'pro' in sso.sessions:
+            await sso.get_session('pro').async_logout()
+
+        s = sso.get_session('pro')
+        assert await s.async_authenticate('pro','pro')
+        assert await s.async_api_request('/tests/ping') == {'Code': 1000}
+        assert await s.async_logout()
+        
