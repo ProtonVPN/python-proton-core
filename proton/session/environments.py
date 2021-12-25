@@ -58,6 +58,8 @@ class Environment(metaclass=abc.ABCMeta):
         pass
 
     def __eq__(self, other):
+        if other is None:
+            return False
         return self.name == other.name
 
 
