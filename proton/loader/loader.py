@@ -1,7 +1,12 @@
 import os
 import warnings
+from collections import namedtuple
+from typing import Optional
 
 from ..utils import Singleton
+
+PluggableComponent = namedtuple('PluggableComponent', ['priority', 'class_name', 'cls'])
+PluggableComponentName = namedtuple('PluggableComponentName', ['type_name', 'class_name'])
 
 class Loader(metaclass=Singleton):
     """This is the loader for pluggable components. These components are identified by a type name (string)
@@ -43,15 +48,24 @@ class Loader(metaclass=Singleton):
 
         self.__metadata = metadata
         self.__known_types = {}
+        self.__name_resolution_cache = {}
 
     @property
     def type_names(self): 
+        """ Return a list of the known type names """
         return [x[len(self.__loader_prefix):] for x in self.__metadata.entry_points().keys() if x.startswith(self.__loader_prefix)]
 
     def _get_metadata_group_for_typename(self, type_name: str) -> str:
         return self.__loader_prefix + type_name
 
-    def get_all(self, type_name: str):
+    def reset(self):
+        """Erase the loader cache"""
+        self.__known_types = {}
+        self.__name_resolution_cache = {}
+
+    def get_all(self, type_name: str) -> list[PluggableComponent]:
+        """Get a list of tuples for all the implementations for type_name."""
+
         # If we don't have already loaded the entry points, just do so
         if type_name not in self.__known_types:
             entry_points = self.__metadata.entry_points().get(self._get_metadata_group_for_typename(type_name), ())
@@ -61,9 +75,9 @@ class Loader(metaclass=Singleton):
                     self.__known_types[type_name][ep.name] = ep.load()
                 except AttributeError:
                     warnings.warn(f"Loader: couldn't load {type_name}/{ep.name}, is it installed properly?", RuntimeWarning, stacklevel=2)
+                    continue
+                self.__name_resolution_cache[self.__known_types[type_name][ep.name]] = PluggableComponentName(type_name, ep.name)
 
-        
-        
         # We do this at runtime, because we want to make sure we can change it after start.
         overrides = os.environ.get('PROTON_LOADER_OVERRIDES', '')
         overrides = [x.strip() for x in overrides.split()]
@@ -85,29 +99,46 @@ class Loader(metaclass=Singleton):
 
         acceptable_classes = [(v._get_priority(), k, v) for k, v in self.__known_types[type_name].items() if k in acceptable_entry_points]
         acceptable_classes += [(None, k, v) for k, v in self.__known_types[type_name].items() if k not in acceptable_entry_points]
-        acceptable_classes_with_prio = [(priority, class_name, v) for priority, class_name, v in acceptable_classes if priority is not None]
-        acceptable_classes_without_prio = [(priority, class_name, v) for priority, class_name, v in acceptable_classes if priority is None]
+        acceptable_classes_with_prio = [PluggableComponent(priority, class_name, v) for priority, class_name, v in acceptable_classes if priority is not None]
+        acceptable_classes_without_prio = [PluggableComponent(priority, class_name, v) for priority, class_name, v in acceptable_classes if priority is None]
+
+        # Sort the entries with priority, highest first
         acceptable_classes_with_prio.sort(reverse=True)
         
         return acceptable_classes_with_prio + acceptable_classes_without_prio
 
-    def get(self, type_name: str) -> type:
+    def get(self, type_name: str, class_name: Optional[str] = None) -> type:
         acceptable_classes = self.get_all(type_name)
 
-        for prio, class_name, cls in acceptable_classes:
+        for entry in acceptable_classes:
+            # If caller specified the class he wanted, then we check only that.
+            if class_name is not None:
+                if entry.class_name == class_name:
+                    return entry.cls
+                else:
+                    continue
+            
             # Invalid priority, just continue (this will fail anyway because we have ordered the list in get_all, but for what it costs I prefer to go through the list)
-            if prio is None:
+            if entry.priority is None:
                 continue
             # If we have a _validate class method, try to see if the object is indeed acceptable
-            if hasattr(cls, '_validate'):
-                if cls._validate():
-                    return cls
+            if hasattr(entry.cls, '_validate'):
+                if entry.cls._validate():
+                    return entry.cls
                 else:
                     # If not, remove that from the acceptable types definitely (it's broken)
-                    self.__known_types[type_name] = dict([(k,v) for k, v in self.__known_types[type_name].items() if v != cls])
+                    self.__known_types[type_name] = dict([(k,v) for k, v in self.__known_types[type_name].items() if v != entry.cls])
             else:
-                return cls
+                return entry.cls
 
         raise RuntimeError(f"Loader: couldn't find an acceptable implementation for {type_name}.")
 
+    def set_all(self, type_name: str, implementations : dict[str, type]):
+        """This method is mostly useful only for testing, it allows to set a defined set of implementation for a given type_name."""
+        self.__known_types[type_name] = implementations
+        for class_name, cls in implementations.items():
+            self.__name_resolution_cache[cls] = PluggableComponentName(type_name, class_name)
 
+    def get_name(self, cls) -> Optional[PluggableComponentName]:
+        """Return the type_name and class_name corresponding to the class."""
+        return self.__name_resolution_cache.get(cls, None)
