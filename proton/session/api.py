@@ -9,6 +9,22 @@ import asyncio
 import base64
 import random
 
+SRP_MODULUS_KEY = """-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+xjMEXAHLgxYJKwYBBAHaRw8BAQdAFurWXXwjTemqjD7CXjXVyKf0of7n9Ctm
+L8v9enkzggHNEnByb3RvbkBzcnAubW9kdWx1c8J3BBAWCgApBQJcAcuDBgsJ
+BwgDAgkQNQWFxOlRjyYEFQgKAgMWAgECGQECGwMCHgEAAPGRAP9sauJsW12U
+MnTQUZpsbJb53d0Wv55mZIIiJL2XulpWPQD/V6NglBd96lZKBmInSXX/kXat
+Sv+y0io+LR8i2+jV+AbOOARcAcuDEgorBgEEAZdVAQUBAQdAeJHUz1c9+KfE
+kSIgcBRE3WuXC4oj5a2/U3oASExGDW4DAQgHwmEEGBYIABMFAlwBy4MJEDUF
+hcTpUY8mAhsMAAD/XQD8DxNI6E78meodQI+wLsrKLeHn32iLvUqJbVDhfWSU
+WO4BAMcm1u02t4VKw++ttECPt+HUgPUq5pqQWe5Q2cW4TMsE
+=Y4Mw
+-----END PGP PUBLIC KEY BLOCK-----"""
+
+SRP_MODULUS_KEY_FINGERPRINT = "248097092b458509c508dac0350585c4e9518f26"
+
+
 def sync_wrapper(f):
     def wrapped_f(*a, **kw):
         try:
@@ -25,6 +41,7 @@ def sync_wrapper(f):
             return loop.run_until_complete(f(*a, **kw))
         finally:
             loop.close()
+    wrapped_f.__doc__ = f"Synchronous wrapper for :meth:`{f.__name__}`"
     return wrapped_f
 
 class Session:
@@ -315,7 +332,6 @@ class Session:
         return await self.__transport.async_api_request(endpoint, jsondata, additional_headers, method, params)
 
     def _verify_modulus(self, armored_modulus) -> bytes:
-        from .constants import SRP_MODULUS_KEY, SRP_MODULUS_KEY_FINGERPRINT
         if self.__gnupg_for_modulus is None:
             import gnupg
             # Verify modulus
@@ -331,15 +347,17 @@ class Session:
 
         return base64.b64decode(verified.data.strip())
 
-    async def async_authenticate(self, username, password, no_condition_check=False) -> bool:
-        """Authenticate user against API.
+    async def async_authenticate(self, username: str, password: str, no_condition_check:bool=False) -> bool:
+        """Authenticate against Proton API
 
-        Args:
-            username (string): proton account username
-            password (string): proton account password
-
-        Returns:
-            boolean: True if authentication was successful, False otherwise
+        :param username: Proton account username
+        :type username: str
+        :param password: Proton account password
+        :type password: str
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        :return: True if authentication succeeded, False otherwise.
+        :rtype: bool
         """
         self._requests_lock(no_condition_check)
 

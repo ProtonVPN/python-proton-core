@@ -1,4 +1,7 @@
+from typing import Optional
+
 class ProtonError(Exception):
+    """Base class for Proton API specific exceptions"""
     def __init__(self, message, additional_context=None):
         self.message = message
         self.additional_context = additional_context
@@ -10,26 +13,61 @@ class ProtonCryptoError(ProtonError):
 
 class ProtonAPIError(ProtonError):
     """Exception that is raised whenever the API call didn't return a 1000/1001 code.
-    Logic for handling these depend on the call (see API doc)"""
+    Logic for handling these depend on the call (see API doc)
+    """
+
     def __init__(self, http_code, http_headers, json_data):
-        self.http_code = http_code
-        self.http_headers = http_headers
-        self.json_data = json_data
+        self._http_code = http_code
+        self._http_headers = http_headers
+        self._json_data = json_data
 
         super().__init__(f'[HTTP/{self.http_code}, {self.body_code}] {self.error}')
 
     @property
-    def body_code(self):
-        return self.json_data['Code']
+    def http_code(self) -> int:
+        """:return: HTTP error code (401, 403, 422...)
+        :rtype: int
+        """
+        return self._http_code
+
+    @property
+    def http_headers(self) -> dict:
+        """:return: Dictionary of HTTP headers of the error reply
+        :rtype: dict
+        """
+        return self._http_headers
+
+    @property
+    def json_data(self) -> dict:
+        """:return: JSON data of the error reply
+        :rtype: dict
+        """
+        return self._json_data
+
+    @property
+    def body_code(self) -> int:
+        """:return: Body error code ("Code" in JSON)
+        :rtype: int
+        """
+        return self._json_data['Code']
     
     @property
-    def error(self):
-        return self.json_data['Error']
+    def error(self) -> str:
+        """:return: Body error message ("Error" in JSON)
+        :rtype: str
+        """
+        return self._json_data['Error']
 
     @classmethod
-    def from_proton_api_error(cls, e):
-        """This is a constructor allowing to downcast an exception"""
-        return cls(e.http_code, e.http_headers, e.json_data)
+    def from_proton_api_error(cls, e : "ProtonAPIError"):
+        """Construct an instance of this class, based on a ProtonAPIError (this allows to downcast to a more specific exception)
+
+        :param e: Initial API exception
+        :type e: ProtonAPIError
+        :return: An instance of the current class
+        :rtype: Any
+        """
+        return cls(e._http_code, e._http_headers, e._json_data)
 
 class ProtonAPINotReachable(ProtonError):
     """Exception thrown when the transport couldn't reach the API.
@@ -60,15 +98,18 @@ class ProtonAPIMissingScopeError(ProtonAPIError):
     This might be because of user rights, but also might require a call to unlock."""
 
 class ProtonAPIHumanVerificationNeeded(ProtonAPIError):
-    """Human verification is needed for this call to be able to happen."""
-    def __init__(self, *a, **kw):
-        print("ProtonAPIHumanVerificationNeeded", *a, **kw)
-        super().__init__(*a,**kw)
+    """Human verification is needed for this API call to succeed."""
 
     @property
-    def HumanVerificationToken(self):
+    def HumanVerificationToken(self) -> Optional[str]:
+        """Get the Token for human verification"""
         return self.json_data.get('Details', {}).get('HumanVerificationToken', None)
 
     @property
-    def Methods(self):
+    def HumanVerificationMethods(self) -> list[str]:
+        """Return a list of allowed human verification methods.
+
+        :return: human verification methods
+        :rtype: list[str]
+        """
         return self.json_data.get('Details', {}).get('Methods', [])
