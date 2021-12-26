@@ -91,214 +91,6 @@ class Session:
 
         self.__persistence_observers = []
 
-    def register_persistence_observer(self, observer: object):
-        """Register an observer that will be notified of any persistent state change of the session
-
-        :param observer: Observer to register. It has to provide the following interface (see :class:`proton.sso.ProtonSSO` for an actual implementation):
-
-          * ``_acquire_session_lock(account_name : str, session_data : dict)``
-          * ``_release_session_lock(account_name : str, new_session_data : dict)``
-
-        :type observer: object
-        """
-        self.__persistence_observers.append(observer)
-
-    def _clear_local_data(self) -> None:
-        """Clear locally cache data for logout (or equivalently, when the session is "lost")."""
-        self.__UID = None
-        self.__AccessToken = None
-        self.__RefreshToken = None
-        self.__Scopes = None
-        self.__2FA = None
-
-    @property
-    def transport_factory(self):
-        """Set/read the factory used for transports (i.e. how to reach the API).
-
-        If the property is set to a class, it will be wrapped in a factory.
-
-        If the property is set to None, then the default ``transport`` will be obtained from :class:`.Loader`.
-        """
-        return self.__transport_factory
-
-    @transport_factory.setter
-    def transport_factory(self, new_transport_factory):
-        from .transports import TransportFactory
-        from ..loader import Loader
-
-        self.__transport = None
-        # If we don't set a new transport factory, then let's create a default one
-        if new_transport_factory is None:
-            default_transport = Loader.get('transport')
-            self.__transport_factory = TransportFactory(default_transport)
-        elif isinstance(new_transport_factory, TransportFactory):
-            self.__transport_factory = new_transport_factory
-        else:
-            self.__transport_factory = TransportFactory(new_transport_factory)
-
-    @property
-    def appversion(self) -> str:
-        """:return: The appversion defined at construction (used for creating requests by transports)
-        :rtype: str"""
-        return self.__appversion
-
-    @property
-    def user_agent(self) -> str:
-        """:return: The user_agent defined at construction (used for creating requests by transports)
-        :rtype: str"""
-        return self.__user_agent
-
-    @property
-    def authenticated(self) -> bool:
-        """:return: True if session is authenticated, False otherwise.
-        :rtype: bool
-        """
-        return self.__UID is not None
-    
-    @property
-    def UID(self) -> Optional[str]:
-        """:return: the session UID, None if not authenticated
-        :rtype: str, optional
-        """
-        return self.__UID
-
-    @property
-    def Scopes(self) -> Optional[list[str]]:
-        """:return: list of scopes of the current session, None if unknown or not defined.
-        :rtype: list[str], optional
-        """
-        return self.__Scopes
-
-    @property
-    def AccountName(self) -> str:
-        """:return: session account name (mostly used for SSO)
-        :rtype: str
-        """
-        return self.__AccountName
-
-    @property
-    def needs_twofa(self) -> bool:
-        """:return: True if a 2FA authentication is needed, False otherwise.
-        :rtype: bool
-        """
-        if self.Scopes is None:
-            return False
-        return 'twofactor' in self.Scopes
-
-    @property
-    def environment(self):
-        """Get/set the environment in use for that session. It can be only set once at the beginning of the session's object lifetime,
-        as changing the environment can lead to security hole.
-
-        If the new value is:
-        
-        * None: do nothing
-        * a string: will use :meth:`.Environment.get_environment` to get the actual class.
-        """
-        if self.__environment is None:
-            from proton.loader import Loader
-            self.__environment = Loader.get('environment')()
-        return self.__environment
-
-    @environment.setter
-    def environment(self, newvalue):
-        # Do nothing if we set to None
-        if newvalue is None:
-            return
-        if isinstance(newvalue, str):
-            newvalue = Environment.get_environment(newvalue)
-        if not isinstance(newvalue, Environment):
-            raise TypeError("environment should be a subclass of Environment")
-
-        #Same environment => nothing to do
-        if self.__environment == newvalue:
-            return
-        
-        if self.__environment is not None:
-            raise ValueError("Cannot change environment of an established session (that would create security issues)!")
-        self.__environment = newvalue
-
-    def __setstate__(self, data):
-        self.__UID = data.get('UID', None)
-        self.__AccessToken = data.get('AccessToken', None)
-        self.__RefreshToken = data.get('RefreshToken', None)
-        self.__Scopes = data.get('Scopes', None)
-        self.__AccountName = data.get('AccountName', None)
-        #Reset transport (user agent etc might have changed)
-        self.__transport = None
-        #get environment as stored in the session
-        self.__environment = Environment.get_environment(data.get('Environment', None))
-
-    def __getstate__(self):
-        # If we don't have an UID, then we're not logged in and we don't want to store a state
-        if self.UID is None:
-            return {}
-
-        data = {
-            #Session data
-            'UID': self.UID,
-            'AccessToken': self.__AccessToken,
-            'RefreshToken': self.__RefreshToken,
-            'Scopes': self.Scopes,
-            'Environment': self.environment.name,
-            'AccountName': self.__AccountName
-        }
-
-        return data
-
-    def _requests_lock(self, no_condition_check=False):
-        """Lock the session, this has to be done when doing requests that affect the session state (i.e. :meth:`authenticate` for 
-        instance), to prevent race conditions.
-
-        Internally, this is done using :class:`asyncio.Event`.
-
-        :param no_condition_check: Internal flag to disable locking, defaults to False
-        :type no_condition_check: bool, optional
-        """
-        if no_condition_check:
-            return
-        
-        if self.__can_run_requests is None:
-            self.__can_run_requests = asyncio.Event()
-        self.__can_run_requests.clear()
-
-        # Lock observers (we're about to modify the session)
-        account_name = self.AccountName
-        session_data = self.__getstate__()
-        for observer in self.__persistence_observers:
-            observer._acquire_session_lock(account_name, session_data)
-
-    def _requests_unlock(self, no_condition_check=False):
-        """Unlock the session, this has to be done after doing requests that affect the session state (i.e. :meth:`authenticate` for 
-        instance), to prevent race conditions.
-
-        :param no_condition_check: Internal flag to disable locking, defaults to False
-        :type no_condition_check: bool, optional
-        """
-        if no_condition_check:
-            return
-        
-        if self.__can_run_requests is None:
-            self.__can_run_requests = asyncio.Event()
-        self.__can_run_requests.set()
-
-        # Unlock observers (we might have modified the session)
-        # It's important to do it in reverse order, as otherwise there's a risk of deadlocks
-        account_name = self.AccountName
-        session_data = self.__getstate__()
-        for observer in reversed(self.__persistence_observers):
-            observer._release_session_lock(account_name, session_data)
-
-    async def _requests_wait(self, no_condition_check=False):
-        """Wait for session unlock.
-
-        :param no_condition_check: Internal flag to disable locking, defaults to False
-        :type no_condition_check: bool, optional
-        """
-        if no_condition_check or self.__can_run_requests is None:
-            return
-        
-        await self.__can_run_requests.wait()
 
     async def async_api_request(self, endpoint,
         jsondata=None, additional_headers=None,
@@ -365,44 +157,6 @@ class Session:
                     continue
                 #Something else, throw
                 raise
-
-    async def __sleep_for_exception(self, e):
-        if e.http_headers.get('retry-after','-').isnumeric():
-            await asyncio.sleep(int(e.http_headers.get('retry-after')))
-        else:
-            await asyncio.sleep(3+random.random()*5) # nosec (no crypto risk here of using an unsafe generator)
-
-    async def __async_api_request_internal(
-        self, endpoint,
-        jsondata=None, additional_headers=None,
-        method=None, params=None, no_condition_check=False
-    ):
-        """Internal function to do an API request (without clever exception handling and retrying). 
-        See :meth:`async_api_request` for the parameters specification."""
-        # Should (and can we) create a transport
-        if self.__transport is None and self.__transport_factory is not None:
-            self.__transport = self.__transport_factory(self)
-        if self.__transport is None:
-            raise RuntimeError("Could not instanciate a transport, are required dependencies installed?")
-
-        await self._requests_wait(no_condition_check)
-        return await self.__transport.async_api_request(endpoint, jsondata, additional_headers, method, params)
-
-    def _verify_modulus(self, armored_modulus) -> bytes:
-        if self.__gnupg_for_modulus is None:
-            import gnupg
-            # Verify modulus
-            self.__gnupg_for_modulus = gnupg.GPG()
-            self.__gnupg_for_modulus.import_keys(SRP_MODULUS_KEY)
-
-        # gpg.decrypt verifies the signature too, and returns the parsed data.
-        # By using gpg.verify the data is not returned
-        verified = self.__gnupg_for_modulus.decrypt(armored_modulus)
-
-        if not (verified.valid and verified.fingerprint.lower() == SRP_MODULUS_KEY_FINGERPRINT):
-            raise ProtonCryptoError('Invalid modulus')
-
-        return base64.b64decode(verified.data.strip())
 
     async def async_authenticate(self, username: str, password: str, no_condition_check:bool=False) -> bool:
         """Authenticate against Proton API
@@ -627,5 +381,262 @@ class Session:
     lock = sync_wrapper(async_lock)
     human_verif_request_code = sync_wrapper(async_human_verif_request_code)
     human_verif_provide_token = sync_wrapper(async_human_verif_provide_token)
+
+    def register_persistence_observer(self, observer: object):
+        """Register an observer that will be notified of any persistent state change of the session
+
+        :param observer: Observer to register. It has to provide the following interface (see :class:`proton.sso.ProtonSSO` for an actual implementation):
+
+          * ``_acquire_session_lock(account_name : str, session_data : dict)``
+          * ``_release_session_lock(account_name : str, new_session_data : dict)``
+
+        :type observer: object
+        """
+        self.__persistence_observers.append(observer)
+
+    def _clear_local_data(self) -> None:
+        """Clear locally cache data for logout (or equivalently, when the session is "lost")."""
+        self.__UID = None
+        self.__AccessToken = None
+        self.__RefreshToken = None
+        self.__Scopes = None
+        self.__2FA = None
+
+    @property
+    def transport_factory(self):
+        """Set/read the factory used for transports (i.e. how to reach the API).
+
+        If the property is set to a class, it will be wrapped in a factory.
+
+        If the property is set to None, then the default ``transport`` will be obtained from :class:`.Loader`.
+        """
+        return self.__transport_factory
+
+    @transport_factory.setter
+    def transport_factory(self, new_transport_factory):
+        from .transports import TransportFactory
+        from ..loader import Loader
+
+        self.__transport = None
+        # If we don't set a new transport factory, then let's create a default one
+        if new_transport_factory is None:
+            default_transport = Loader.get('transport')
+            self.__transport_factory = TransportFactory(default_transport)
+        elif isinstance(new_transport_factory, TransportFactory):
+            self.__transport_factory = new_transport_factory
+        else:
+            self.__transport_factory = TransportFactory(new_transport_factory)
+
+    @property
+    def appversion(self) -> str:
+        """:return: The appversion defined at construction (used for creating requests by transports)
+        :rtype: str"""
+        return self.__appversion
+
+    @property
+    def user_agent(self) -> str:
+        """:return: The user_agent defined at construction (used for creating requests by transports)
+        :rtype: str"""
+        return self.__user_agent
+
+    @property
+    def authenticated(self) -> bool:
+        """:return: True if session is authenticated, False otherwise.
+        :rtype: bool
+        """
+        return self.__UID is not None
+    
+    @property
+    def UID(self) -> Optional[str]:
+        """:return: the session UID, None if not authenticated
+        :rtype: str, optional
+        """
+        return self.__UID
+
+    @property
+    def Scopes(self) -> Optional[list[str]]:
+        """:return: list of scopes of the current session, None if unknown or not defined.
+        :rtype: list[str], optional
+        """
+        return self.__Scopes
+
+    @property
+    def AccountName(self) -> str:
+        """:return: session account name (mostly used for SSO)
+        :rtype: str
+        """
+        return self.__AccountName
+
+    @property
+    def AccessToken(self) -> str:
+        """:return: return the access token for API calls (used by transports)
+        :rtype: str
+        """
+        return self.__AccessToken
+
+    @property
+    def needs_twofa(self) -> bool:
+        """:return: True if a 2FA authentication is needed, False otherwise.
+        :rtype: bool
+        """
+        if self.Scopes is None:
+            return False
+        return 'twofactor' in self.Scopes
+
+    @property
+    def environment(self):
+        """Get/set the environment in use for that session. It can be only set once at the beginning of the session's object lifetime,
+        as changing the environment can lead to security hole.
+
+        If the new value is:
+        
+        * None: do nothing
+        * a string: will use :meth:`.Environment.get_environment` to get the actual class.
+        """
+        if self.__environment is None:
+            from proton.loader import Loader
+            self.__environment = Loader.get('environment')()
+        return self.__environment
+
+    @environment.setter
+    def environment(self, newvalue):
+        # Do nothing if we set to None
+        if newvalue is None:
+            return
+        if isinstance(newvalue, str):
+            newvalue = Environment.get_environment(newvalue)
+        if not isinstance(newvalue, Environment):
+            raise TypeError("environment should be a subclass of Environment")
+
+        #Same environment => nothing to do
+        if self.__environment == newvalue:
+            return
+        
+        if self.__environment is not None:
+            raise ValueError("Cannot change environment of an established session (that would create security issues)!")
+        self.__environment = newvalue
+
+    def __setstate__(self, data):
+        self.__UID = data.get('UID', None)
+        self.__AccessToken = data.get('AccessToken', None)
+        self.__RefreshToken = data.get('RefreshToken', None)
+        self.__Scopes = data.get('Scopes', None)
+        self.__AccountName = data.get('AccountName', None)
+        #Reset transport (user agent etc might have changed)
+        self.__transport = None
+        #get environment as stored in the session
+        self.__environment = Environment.get_environment(data.get('Environment', None))
+
+    def __getstate__(self):
+        # If we don't have an UID, then we're not logged in and we don't want to store a state
+        if self.UID is None:
+            return {}
+
+        data = {
+            #Session data
+            'UID': self.UID,
+            'AccessToken': self.__AccessToken,
+            'RefreshToken': self.__RefreshToken,
+            'Scopes': self.Scopes,
+            'Environment': self.environment.name,
+            'AccountName': self.__AccountName
+        }
+
+        return data
+
+    def _requests_lock(self, no_condition_check=False):
+        """Lock the session, this has to be done when doing requests that affect the session state (i.e. :meth:`authenticate` for 
+        instance), to prevent race conditions.
+
+        Internally, this is done using :class:`asyncio.Event`.
+
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        """
+        if no_condition_check:
+            return
+        
+        if self.__can_run_requests is None:
+            self.__can_run_requests = asyncio.Event()
+        self.__can_run_requests.clear()
+
+        # Lock observers (we're about to modify the session)
+        account_name = self.AccountName
+        session_data = self.__getstate__()
+        for observer in self.__persistence_observers:
+            observer._acquire_session_lock(account_name, session_data)
+
+    def _requests_unlock(self, no_condition_check=False):
+        """Unlock the session, this has to be done after doing requests that affect the session state (i.e. :meth:`authenticate` for 
+        instance), to prevent race conditions.
+
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        """
+        if no_condition_check:
+            return
+        
+        if self.__can_run_requests is None:
+            self.__can_run_requests = asyncio.Event()
+        self.__can_run_requests.set()
+
+        # Unlock observers (we might have modified the session)
+        # It's important to do it in reverse order, as otherwise there's a risk of deadlocks
+        account_name = self.AccountName
+        session_data = self.__getstate__()
+        for observer in reversed(self.__persistence_observers):
+            observer._release_session_lock(account_name, session_data)
+
+    async def _requests_wait(self, no_condition_check=False):
+        """Wait for session unlock.
+
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        """
+        if no_condition_check or self.__can_run_requests is None:
+            return
+        
+        await self.__can_run_requests.wait()
+
+
+    async def __sleep_for_exception(self, e):
+        if e.http_headers.get('retry-after','-').isnumeric():
+            await asyncio.sleep(int(e.http_headers.get('retry-after')))
+        else:
+            await asyncio.sleep(3+random.random()*5) # nosec (no crypto risk here of using an unsafe generator)
+
+    async def __async_api_request_internal(
+        self, endpoint,
+        jsondata=None, additional_headers=None,
+        method=None, params=None, no_condition_check=False
+    ):
+        """Internal function to do an API request (without clever exception handling and retrying). 
+        See :meth:`async_api_request` for the parameters specification."""
+        # Should (and can we) create a transport
+        if self.__transport is None and self.__transport_factory is not None:
+            self.__transport = self.__transport_factory(self)
+        if self.__transport is None:
+            raise RuntimeError("Could not instanciate a transport, are required dependencies installed?")
+
+        await self._requests_wait(no_condition_check)
+        return await self.__transport.async_api_request(endpoint, jsondata, additional_headers, method, params)
+
+    def _verify_modulus(self, armored_modulus) -> bytes:
+        if self.__gnupg_for_modulus is None:
+            import gnupg
+            # Verify modulus
+            self.__gnupg_for_modulus = gnupg.GPG()
+            self.__gnupg_for_modulus.import_keys(SRP_MODULUS_KEY)
+
+        # gpg.decrypt verifies the signature too, and returns the parsed data.
+        # By using gpg.verify the data is not returned
+        verified = self.__gnupg_for_modulus.decrypt(armored_modulus)
+
+        if not (verified.valid and verified.fingerprint.lower() == SRP_MODULUS_KEY_FINGERPRINT):
+            raise ProtonCryptoError('Invalid modulus')
+
+        return base64.b64decode(verified.data.strip())
+
+
 
 
