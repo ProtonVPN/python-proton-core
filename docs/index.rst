@@ -14,6 +14,7 @@ Welcome to python-proton-core's documentation!
    sso
    session
    keyring
+   views
 
 
 Indices and tables
