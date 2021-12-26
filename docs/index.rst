@@ -11,6 +11,8 @@ Welcome to python-proton-core's documentation!
    :caption: Contents:
 
    loader
+   sso
+   session
    keyring
 
 

@@ -2,7 +2,28 @@ import os, fcntl, re, base64
 
 # We don't necessarily need it to be a singleton, it doesn't harm in itself if multiple instances are created
 class ProtonSSO:
-    def __init__(self, appversion : str = "Other", user_agent:str="None"):
+    """Proton Single Sign On implementation. This allows session persistence for the current user.
+
+    The general approach for this is to create a SSO instance, and then to get either a specific or the default session, and work from there:
+
+    .. code-block::
+
+        from proton.sso import ProtonSSO
+        sso = ProtonSSO()
+        session = sso.get_default_session()
+        # or:
+        session = sso.get_session('pro') # get session for account pro
+
+    Note that it is advised not to try to "guess" the state of the session, but instead to just try to use it, and handle any exception that would arise.
+    """
+    def __init__(self, appversion : str = "Other", user_agent: str ="None"):
+        """Create a SSO instance
+
+        :param appversion: Application version (see :class:`proton.session.Session`), defaults to "Other"
+        :type appversion: str, optional
+        :param user_agent: User agent version (see :class:`proton.session.Session`), defaults to "None"
+        :type user_agent: str, optional
+        """
         # Store appversion and user_agent for subsequent sessions
         self._appversion = appversion
         self._user_agent = user_agent

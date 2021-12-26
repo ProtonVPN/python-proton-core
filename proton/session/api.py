@@ -31,12 +31,14 @@ class Session:
     def __init__(self, appversion : str = "Other", user_agent:str="None"):
         """Get a session towards the Proton API.
 
-        Args:
-            appversion: version for the new Session object
-            user_agent: user agent for the new Session` object should be in the following syntax:
-                - Linux based -> ClientName/client.version (Linux; Distro/distro_version)
-                - Non-linux based -> ClientName/client.version (OS)
-            transport: class for the transport to be used for the session
+        :param appversion: version for the new Session object, defaults to ``"Other"``
+        :type appversion: str, optional
+        :param user_agent: user agent to use, defaults to ``"None"``. It should be of the following syntax:
+
+          * Linux based -> ``ClientName/client.version (Linux; Distro/distro_version)``
+          * Non-linux based -> ``ClientName/client.version (OS)``
+
+        :type user_agent: str, optional
         """
         self.__appversion = appversion
         self.__user_agent = user_agent
@@ -184,17 +186,6 @@ class Session:
         }
 
         return data
-
-    @classmethod
-    def load(cls, dump) -> 'Session':
-        """Legacy method to load a session from a dump"""
-        new_obj = cls()
-        new_obj.__setstate__(dump)
-        return new_obj
-
-    def dump(self):
-        """Get the current state of the object"""
-        return self.__getstate__()
 
     def _requests_lock(self, no_condition_check=False):
         if no_condition_check:
