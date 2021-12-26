@@ -103,6 +103,14 @@ class Session:
         """
         self.__persistence_observers.append(observer)
 
+    def _clear_local_data(self) -> None:
+        """Clear locally cache data for logout (or equivalently, when the session is "lost")."""
+        self.__UID = None
+        self.__AccessToken = None
+        self.__RefreshToken = None
+        self.__Scopes = None
+        self.__2FA = None
+
     @property
     def transport_factory(self):
         return self.__transport_factory
@@ -137,14 +145,6 @@ class Session:
     @property
     def UID(self) -> str:
         return self.__UID
-
-    @property
-    def AccessToken(self) -> str:
-        return self.__AccessToken
-
-    @property
-    def RefreshToken(self) -> str:
-        return self.__RefreshToken
 
     @property
     def Scopes(self) -> list[str]:
@@ -204,8 +204,8 @@ class Session:
         data = {
             #Session data
             'UID': self.UID,
-            'AccessToken': self.AccessToken,
-            'RefreshToken': self.RefreshToken,
+            'AccessToken': self.__AccessToken,
+            'RefreshToken': self.__RefreshToken,
             'Scopes': self.Scopes,
             'Environment': self.environment.name,
             'AccountName': self.__AccountName
@@ -445,11 +445,7 @@ class Session:
             if e.body_code == 8002:
                 # 2FA jail, we need to start over (beware, we might hit login jails too)
                 #Needs re-login
-                self.__UID = None
-                self.__AccessToken = None
-                self.__RefreshToken = None
-                self.__Scopes = None
-                self.__2FA = None
+                self._clear_local_data()
                 raise ProtonAPIAuthenticationNeeded.from_proton_api_error(e)
             if e.http_code == 401:
                 return False
@@ -486,7 +482,7 @@ class Session:
                     refresh_response = await self.__async_api_request_internal('/auth/refresh', {
                         "ResponseType": "token",
                         "GrantType": "refresh_token",
-                        "RefreshToken": self.RefreshToken,
+                        "RefreshToken": self.__RefreshToken,
                         "RedirectURI": "http://protonmail.ch"
                     }, no_condition_check=True)
                     self.__AccessToken = refresh_response["AccessToken"]
@@ -505,10 +501,7 @@ class Session:
                         continue
                     elif e.http_code in (400, 422):
                         #Needs re-login
-                        self.__UID = None
-                        self.__AccessToken = None
-                        self.__RefreshToken = None
-                        self.__Scopes = None
+                        self._clear_local_data()
                         return False
                     return False
         finally:
@@ -532,10 +525,7 @@ class Session:
         try:
             ret = await self.__async_api_request_internal('/auth', method='DELETE', no_condition_check=True)
              # Erase any information we have about the session
-            self.__UID = None
-            self.__AccessToken = None
-            self.__RefreshToken = None
-            self.__Scopes = None
+            self._clear_local_data()
             return True
         except ProtonAPIError as e:
             #If the token is already invalid, just ignore... otherwise raise
