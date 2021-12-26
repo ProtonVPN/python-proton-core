@@ -9,6 +9,8 @@ Session object
    :special-members: __init__
    :undoc-members:
 
+.. _exceptions:
+
 Exceptions
 ----------
 

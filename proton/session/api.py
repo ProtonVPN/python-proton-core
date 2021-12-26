@@ -113,6 +113,12 @@ class Session:
 
     @property
     def transport_factory(self):
+        """Set/read the factory used for transports (i.e. how to reach the API).
+
+        If the property is set to a class, it will be wrapped in a factory.
+
+        If the property is set to None, then the default ``transport`` will be obtained from :class:`.Loader`.
+        """
         return self.__transport_factory
 
     @transport_factory.setter
@@ -132,36 +138,63 @@ class Session:
 
     @property
     def appversion(self) -> str:
+        """:return: The appversion defined at construction (used for creating requests by transports)
+        :rtype: str"""
         return self.__appversion
 
     @property
     def user_agent(self) -> str:
+        """:return: The user_agent defined at construction (used for creating requests by transports)
+        :rtype: str"""
         return self.__user_agent
 
     @property
     def authenticated(self) -> bool:
+        """:return: True if session is authenticated, False otherwise.
+        :rtype: bool
+        """
         return self.__UID is not None
     
     @property
-    def UID(self) -> str:
+    def UID(self) -> Optional[str]:
+        """:return: the session UID, None if not authenticated
+        :rtype: str, optional
+        """
         return self.__UID
 
     @property
-    def Scopes(self) -> list[str]:
+    def Scopes(self) -> Optional[list[str]]:
+        """:return: list of scopes of the current session, None if unknown or not defined.
+        :rtype: list[str], optional
+        """
         return self.__Scopes
 
     @property
-    def AccountName(self):
+    def AccountName(self) -> str:
+        """:return: session account name (mostly used for SSO)
+        :rtype: str
+        """
         return self.__AccountName
 
     @property
-    def needs_twofa(self):
+    def needs_twofa(self) -> bool:
+        """:return: True if a 2FA authentication is needed, False otherwise.
+        :rtype: bool
+        """
         if self.Scopes is None:
             return False
         return 'twofactor' in self.Scopes
 
     @property
     def environment(self):
+        """Get/set the environment in use for that session. It can be only set once at the beginning of the session's object lifetime,
+        as changing the environment can lead to security hole.
+
+        If the new value is:
+        
+        * None: do nothing
+        * a string: will use :meth:`.Environment.get_environment` to get the actual class.
+        """
         if self.__environment is None:
             from proton.loader import Loader
             self.__environment = Loader.get('environment')()
@@ -214,6 +247,14 @@ class Session:
         return data
 
     def _requests_lock(self, no_condition_check=False):
+        """Lock the session, this has to be done when doing requests that affect the session state (i.e. :meth:`authenticate` for 
+        instance), to prevent race conditions.
+
+        Internally, this is done using :class:`asyncio.Event`.
+
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        """
         if no_condition_check:
             return
         
@@ -228,6 +269,12 @@ class Session:
             observer._acquire_session_lock(account_name, session_data)
 
     def _requests_unlock(self, no_condition_check=False):
+        """Unlock the session, this has to be done after doing requests that affect the session state (i.e. :meth:`authenticate` for 
+        instance), to prevent race conditions.
+
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        """
         if no_condition_check:
             return
         
@@ -243,6 +290,11 @@ class Session:
             observer._release_session_lock(account_name, session_data)
 
     async def _requests_wait(self, no_condition_check=False):
+        """Wait for session unlock.
+
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        """
         if no_condition_check or self.__can_run_requests is None:
             return
         
@@ -251,6 +303,28 @@ class Session:
     async def async_api_request(self, endpoint,
         jsondata=None, additional_headers=None,
         method=None, params=None, no_condition_check=False):
+        """Do an API request.
+
+        This call can return any of the exceptions defined in :mod:`proton.session.exceptions`.
+
+        :param endpoint: API endpoint
+        :type endpoint: str
+        :param jsondata: JSON serializable dict to send as request data
+        :type jsondata: dict
+        :param additional_headers: additional headers to send
+        :type additional_headers: dict
+        :param additional_headers: HTTP method (get|post|put|delete|patch)
+        :type additional_headers: str
+        :param params: URL parameters to append to the URL. If a dictionary or
+            list of tuples ``[(key, value)]`` is provided, form-encoding will
+            take place.
+        :type params: str, dict or iterable
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+
+        :return: Deserialized JSON reply
+        :rtype: dict
+        """
 
         # We might need to loop
         attempts = 3
@@ -303,25 +377,8 @@ class Session:
         jsondata=None, additional_headers=None,
         method=None, params=None, no_condition_check=False
     ):
-        """Make API request.
-
-        Args:
-            endpoint (string): API endpoint
-            jsondata (json): json for the body to attach to the request
-                (if files or data is not specified)
-            additional_headers (dict): additional (dictionary of) headers to send
-            method (string): get|post|put|delete|patch
-            params: URL parameters to append to the URL. If a dictionary or
-                list of tuples ``[(key, value)]`` is provided, form-encoding will
-                take place.
-            no_condition_check: do not check if we can run requests (handled by caller)
-
-        Returns:
-            Dictionary of obtained from the json data in the reply
-
-        Raises:
-            ProtonAPIError: if something went wrong with that call
-        """
+        """Internal function to do an API request (without clever exception handling and retrying). 
+        See :meth:`async_api_request` for the parameters specification."""
         # Should (and can we) create a transport
         if self.__transport is None and self.__transport_factory is not None:
             self.__transport = self.__transport_factory(self)
@@ -418,17 +475,16 @@ class Session:
 
     
 
-    async def async_provide_2fa(self, code, no_condition_check=False):
+    async def async_provide_2fa(self, code : str, no_condition_check=False) -> bool:
         """Provide Two Factor Authentication Code to the API.
-
-        Args:
-            code (string): string of ints
-
-        Returns:
-            True if successful, False otherwise
-
-        The returning dict contains the Scopes of the account. This allows
-        to identify if the account is locked, has unpaid invoices, etc.
+        
+        :param code: 2FA code
+        :type code: str
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        :return: True if 2FA succeeded, False otherwise.
+        :rtype: bool
+        :raises ProtonAPIAuthenticationNeeded: if 2FA failed, and the session was reset by the API backend (this is normally the case)
         """
         self._requests_lock(no_condition_check)
         try:
@@ -460,8 +516,8 @@ class Session:
         If the RefreshToken is invalid then the user will have to
         re-authenticate.
 
-        Returns:
-            True if successful, False otherwise (doesn't throw an exception)
+        :return: True if refresh succeeded, False otherwise (doesn't throw an exception)
+        :rtype: bool
         """
         self._requests_lock(no_condition_check)
 
@@ -512,10 +568,8 @@ class Session:
     async def async_logout(self, no_condition_check=False):
         """Logout from API.
         
-        Returns:
-            True if logout was successful (or nothing was done)
-        Raises:
-            ProtonAPIError: in case something wrong happened (invalid token are ignored if the session is already invalid)
+        :return: True if logout was successful (or nothing was done)
+        :rtype: bool
         """
         # No-op if not authenticated
         if not self.authenticated:
@@ -545,6 +599,7 @@ class Session:
             return True
         finally:
             self._requests_unlock(no_condition_check)
+        #FIXME: clear user keys
 
     #FIXME: implement unlock
 
