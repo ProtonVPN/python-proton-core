@@ -74,7 +74,16 @@ class Session:
 
         self.__persistence_observers = []
 
-    def register_persistence_observer(self, observer):
+    def register_persistence_observer(self, observer: object):
+        """Register an observer that will be notified of any persistent state change of the session
+
+        :param observer: Observer to register. It has to provide the following interface (see :class:`proton.sso.ProtonSSO` for an actual implementation):
+
+          * ``_acquire_session_lock(account_name : str, session_data : dict)``
+          * ``_release_session_lock(account_name : str, new_session_data : dict)``
+
+        :type observer: object
+        """
         self.__persistence_observers.append(observer)
 
     @property
@@ -97,31 +106,31 @@ class Session:
             self.__transport_factory = TransportFactory(new_transport_factory)
 
     @property
-    def appversion(self):
+    def appversion(self) -> str:
         return self.__appversion
 
     @property
-    def user_agent(self):
+    def user_agent(self) -> str:
         return self.__user_agent
 
     @property
-    def authenticated(self):
+    def authenticated(self) -> bool:
         return self.__UID is not None
     
     @property
-    def UID(self):
+    def UID(self) -> str:
         return self.__UID
 
     @property
-    def AccessToken(self):
+    def AccessToken(self) -> str:
         return self.__AccessToken
 
     @property
-    def RefreshToken(self):
+    def RefreshToken(self) -> str:
         return self.__RefreshToken
 
     @property
-    def Scopes(self):
+    def Scopes(self) -> list[str]:
         return self.__Scopes
 
     @property

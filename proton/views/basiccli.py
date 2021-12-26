@@ -29,10 +29,10 @@ class BasicCLIView(BasicView):
             flags.append(f'env:{s.environment.name}')
         
         if len(flags) > 0:
-            flags = f" [{', '.join(flags)}]"
+            flags_str = f" [{', '.join(flags)}]"
         else:
-            flags = ''
-        return f'{s.AccountName}{flags}'
+            flags_str = ''
+        return f'{s.AccountName}{flags_str}'
 
     def display_session_list(self, sessions : list["Session"], ask_to_select_one : bool = False) -> None:
         if len(sessions) == 0:
@@ -51,9 +51,9 @@ class BasicCLIView(BasicView):
                 while True:
                     user_input = input("Please select a session: ") # nosec (Python 3 only code)
                     if user_input.isnumeric():
-                        user_input = int(user_input)
-                        if user_input >= 1 and user_input <= len(sorted_sessions):
-                            return sorted_sessions[user_input - 1]
+                        user_input_idx = int(user_input) - 1
+                        if user_input_idx >= 0 and user_input_idx < len(sorted_sessions):
+                            return sorted_sessions[user_input_idx]
                         else: 
                             print("Invalid input!")
                     else:
