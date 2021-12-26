@@ -61,6 +61,42 @@ class Loader(metaclass=Singleton):
         self.__known_types = {}
         self.__name_resolution_cache = {}
 
+    def get(self, type_name: str, class_name: Optional[str] = None) -> type:
+        """Get the implementation for type_name.
+
+        :param type_name: extension type
+        :type type_name: str
+        :param class_name: specific implementation to get, defaults to None (use preferred one)
+        :type class_name: Optional[str], optional
+        :raises RuntimeError: if no valid implementation can be found, or if PROTON_LOADER_OVERRIDES is invalid.
+        :return: the class implementing type_name. (careful: it's a class, not an object!)
+        :rtype: class
+        """
+        acceptable_classes = self.get_all(type_name)
+
+        for entry in acceptable_classes:
+            # If caller specified the class he wanted, then we check only that.
+            if class_name is not None:
+                if entry.class_name == class_name:
+                    return entry.cls
+                else:
+                    continue
+            
+            # Invalid priority, just continue (this will fail anyway because we have ordered the list in get_all, but for what it costs I prefer to go through the list)
+            if entry.priority is None:
+                continue
+            # If we have a _validate class method, try to see if the object is indeed acceptable
+            if hasattr(entry.cls, '_validate'):
+                if entry.cls._validate():
+                    return entry.cls
+                else:
+                    # If not, remove that from the acceptable types definitely (it's broken)
+                    self.__known_types[type_name] = dict([(k,v) for k, v in self.__known_types[type_name].items() if v != entry.cls])
+            else:
+                return entry.cls
+
+        raise RuntimeError(f"Loader: couldn't find an acceptable implementation for {type_name}.")
+
     @property
     def type_names(self) -> list[str]: 
         """
@@ -68,14 +104,6 @@ class Loader(metaclass=Singleton):
         :rtype: list[str]
         """
         return [x[len(self.__loader_prefix):] for x in self.__metadata.entry_points().keys() if x.startswith(self.__loader_prefix)]
-
-    def _get_metadata_group_for_typename(self, type_name: str) -> str:
-        return self.__loader_prefix + type_name
-
-    def reset(self) -> None:
-        """Erase the loader cache. (useful for tests)"""
-        self.__known_types = {}
-        self.__name_resolution_cache = {}
 
     def get_all(self, type_name: str) -> list[PluggableComponent]:
         """Get a list of all implementations for ``type_name``.
@@ -128,41 +156,20 @@ class Loader(metaclass=Singleton):
         
         return acceptable_classes_with_prio + acceptable_classes_without_prio
 
-    def get(self, type_name: str, class_name: Optional[str] = None) -> type:
-        """Get the implementation for type_name.
+    def get_name(self, cls: type) -> Optional[PluggableComponentName]:
+        """Return the type_name and class_name corresponding to the class in parameter.
 
-        :param type_name: extension type
-        :type type_name: str
-        :param class_name: specific implementation to get, defaults to None (use preferred one)
-        :type class_name: Optional[str], optional
-        :raises RuntimeError: if no valid implementation can be found, or if PROTON_LOADER_OVERRIDES is invalid.
-        :return: the class implementing type_name. (careful: it's a class, not an object!)
-        :rtype: class
+        This is useful for inverse lookups (i.e. for logs for instance)
+
+        :return: ``Tuple (type_name, class_name)``
+        :rtype: Optional[PluggableComponentName]
         """
-        acceptable_classes = self.get_all(type_name)
+        return self.__name_resolution_cache.get(cls, None)
 
-        for entry in acceptable_classes:
-            # If caller specified the class he wanted, then we check only that.
-            if class_name is not None:
-                if entry.class_name == class_name:
-                    return entry.cls
-                else:
-                    continue
-            
-            # Invalid priority, just continue (this will fail anyway because we have ordered the list in get_all, but for what it costs I prefer to go through the list)
-            if entry.priority is None:
-                continue
-            # If we have a _validate class method, try to see if the object is indeed acceptable
-            if hasattr(entry.cls, '_validate'):
-                if entry.cls._validate():
-                    return entry.cls
-                else:
-                    # If not, remove that from the acceptable types definitely (it's broken)
-                    self.__known_types[type_name] = dict([(k,v) for k, v in self.__known_types[type_name].items() if v != entry.cls])
-            else:
-                return entry.cls
-
-        raise RuntimeError(f"Loader: couldn't find an acceptable implementation for {type_name}.")
+    def reset(self) -> None:
+        """Erase the loader cache. (useful for tests)"""
+        self.__known_types = {}
+        self.__name_resolution_cache = {}
 
     def set_all(self, type_name: str, implementations : dict[str, type]):
         """Set a defined set of implementation for a given ``type_name``.
@@ -178,12 +185,12 @@ class Loader(metaclass=Singleton):
         for class_name, cls in implementations.items():
             self.__name_resolution_cache[cls] = PluggableComponentName(type_name, class_name)
 
-    def get_name(self, cls: type) -> Optional[PluggableComponentName]:
-        """Return the type_name and class_name corresponding to the class in parameter.
+    def _get_metadata_group_for_typename(self, type_name: str) -> str:
+        """Return the metadata group name for type_name
 
-        This is useful for inverse lookups (i.e. for logs for instance)
-
-        :return: ``Tuple (type_name, class_name)``
-        :rtype: Optional[PluggableComponentName]
+        :param type_name: type_name
+        :type type_name: str
+        :return: metadata group name
+        :rtype: str
         """
-        return self.__name_resolution_cache.get(cls, None)
+        return self.__loader_prefix + type_name
