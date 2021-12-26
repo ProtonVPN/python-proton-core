@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 
 class BasicCLIView(BasicView):
+    """Implementation of :class:`proton.views.BasicView` for a CLI. It's really just print + input calls."""
     def __init__(self):
         pass
 

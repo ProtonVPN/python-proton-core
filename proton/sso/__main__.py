@@ -58,7 +58,7 @@ class ProtonSSOPresenter:
                             state = ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION
                         else:
                             self._view.display_error("Invalid credentials!")
-                            # Remain in same state
+                            # Remain in NEEDS_AUTHENTICATE state
                     elif state == ProtonSSOPresenterCredentialLogicState.NEEDS_TWOFA:
                         account_name, password, twofa = self._view.ask_credentials(False, False, True)
                         if twofa is None:
@@ -96,7 +96,6 @@ class ProtonSSOPresenter:
 
     def set_default(self):
         account_name = self._session.AccountName
-        print(account_name)
         if account_name is not None:
             self._sso.set_default_account(account_name)
 

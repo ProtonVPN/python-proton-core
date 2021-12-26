@@ -1,5 +1,10 @@
 import os, fcntl, re, base64
 
+from typing import TYPE_CHECKING, Optional
+if TYPE_CHECKING:
+    from ..keyring._base import KeyringBackend
+    from ..session import Session
+
 # We don't necessarily need it to be a singleton, it doesn't harm in itself if multiple instances are created
 class ProtonSSO:
     """Proton Single Sign On implementation. This allows session persistence for the current user.
@@ -15,6 +20,10 @@ class ProtonSSO:
         session = sso.get_session('pro') # get session for account pro
 
     Note that it is advised not to try to "guess" the state of the session, but instead to just try to use it, and handle any exception that would arise.
+
+    This object uses advisory locks (using ``flock``) to protect the session from multiple conflicting changes. This does not guarantee that
+    Session objects are immune to what happens in another process (i.e. imagine if one process terminates the session.), but at least makes it consistent.
+    In the future, it would be nice to use an IPC mechanism to make sure other processes are aware of the state change.
     """
     def __init__(self, appversion : str = "Other", user_agent: str ="None"):
         """Create a SSO instance
@@ -37,31 +46,67 @@ class ProtonSSO:
         # This is a global lock, we use it when we modify the indexes
         self._global_adv_lock = open(os.path.join(self._adv_locks_path, f'proton-sso.lock'), 'w')
 
-    def __normalize_account_name(self, account_name):
+    def __normalize_account_name(self, account_name : str) -> str:
+        """Normalized account_name to avoid variability like caps variation.
+
+        :param account_name: account name to normalize
+        :type account_name: str
+        :raises ValueError: if the name is not valid
+        :return: Normalized account_name
+        :rtype: str
+        """
         account_name = account_name.lower()
         if not re.match(r'^[a-z][0-9a-z@\.-]*$', account_name):
             raise ValueError("Invalid account name")
         
         return account_name
 
-    def __encode_name(self, account_name):
+    def __encode_name(self, account_name) -> str:
+        """Helper function to convert an account_name into a safe alphanumeric string.
+
+        :param account_name: normalized account_name
+        :type account_name: str
+        :return: base32 encoded string, without padding.
+        :rtype: str
+        """
         return base64.b32encode(account_name.encode('utf8')).decode('ascii').rstrip('=').lower()
 
-    def __keyring_key_name(self, account_name):
+    def __keyring_key_name(self, account_name : str) -> str:
+        """Helper function to get the keyring key for account_name
+
+        :param account_name: normalized account_name
+        :type account_name: str
+        :return: keyring key
+        :rtype: str
+        """
         return f'proton-sso-account-{self.__encode_name(account_name)}'
 
-    def __keyring_index_name(self):
+    def __keyring_index_name(self) -> str:
+        """Helper function to get the keyring key to store the index (i.e. account names in order)
+
+        :return: keyring key
+        :rtype: str
+        """
         return f'proton-sso-accounts'
 
     @property
-    def _keyring(self):
+    def _keyring(self) -> "KeyringBackend":
+        """Shortcut to get the default keyring backend
+
+        :return: an instance of the default KeyringBackend
+        :rtype: KeyringBackend
+        """
         # Just to make our life simpler
         from proton.loader import Loader
         return Loader.get('keyring')()
 
     @property
-    def sessions(self):
-        """Return a list of account_names that we currently have"""
+    def sessions(self) -> list[str]:
+        """Returns the account names for the current system user
+
+        :return: list of normalized account_names
+        :rtype: list[str]
+        """
         
         # There is no point in locking, because anyway as soon as we exit this code, the data might not be relevant anymore
         try:
@@ -69,7 +114,55 @@ class ProtonSSO:
         except KeyError:
             return []
 
-    def set_default_account(self, account_name):
+
+    def get_session(self, account_name : Optional[str]) -> "Session":
+        """Get the session identified by account_name
+
+        :param account_name: account name to use. If None will return an empty session (can be used as a factory)
+        :type account_name: Optional[str]
+        :return: the Session object. It will be an empty session if there's no session for account_name
+        :rtype: Session
+        """
+        from ..session import Session
+
+        session = Session(self._appversion, self._user_agent)
+        session.register_persistence_observer(self)
+
+        # If we have an account, then let's fetch the data from it. Otherwise we just ignore and return a blank session
+        if account_name is not None:
+            try:
+                session_data = self._get_session_data(account_name)
+            except KeyError:
+                session_data = None
+        else:
+            session_data = None
+
+        if session_data is not None:
+            session.__setstate__(session_data)
+        
+        return session
+
+    def get_default_session(self)  -> "Session":
+        """Get the default session for the system user. It will always be one valid session if one exists.
+
+        :return: the Session object. It will be an empty session if there's no session at all
+        :rtype: Session
+        """
+        sessions = self.sessions
+        if len(sessions) == 0:
+            account_name = None
+        else:
+            account_name = sessions[0]
+
+        return self.get_session(account_name)
+
+    def set_default_account(self, account_name : str):
+        """Set the default account for user to be account_name
+
+        :param account_name: the account_name to use as default
+        :type account_name: str
+        :raises KeyError: if the account name is unknown
+        """
         account_name = self.__normalize_account_name(account_name)
 
         # We might be reordering accounts, so let's lock the full sso so we can't have concurrent actions here
@@ -91,47 +184,32 @@ class ProtonSSO:
             
         finally:
             fcntl.flock(self._global_adv_lock, fcntl.LOCK_UN)
-
-    def get_session(self, account_name):
-        from ..session import Session
-
-        session = Session(self._appversion, self._user_agent)
-        session.register_persistence_observer(self)
-
-        # If we have an account, then let's fetch the data from it. Otherwise we just ignore and return a blank session
-        if account_name is not None:
-            try:
-                session_data = self._get_session_data(account_name)
-            except KeyError:
-                session_data = None
-        else:
-            session_data = None
-
-        if session_data is not None:
-            session.__setstate__(session_data)
-        
-        return session
-
-    def get_default_session(self):
-        sessions = self.sessions
-        if len(sessions) == 0:
-            account_name = None
-        else:
-            account_name = sessions[0]
-
-        return self.get_session(account_name)
             
 
 
-    def _get_session_data(self, account_name):
-        "Get data of a session, returns an empty dict if no data is present"
+    def _get_session_data(self, account_name : str) -> dict:
+        """Helper function to get data of a session, returns an empty dict if no data is present
+
+        :param account_name: normalized account name
+        :type account_name: str
+        :return: content of the session data, empty dict if it doesn't exist.
+        :rtype: dict
+        """
         try:
             return self._keyring[self.__keyring_key_name(account_name)]
         except KeyError:
             return {}
 
 
-    def _acquire_session_lock(self, account_name, current_data):
+    def _acquire_session_lock(self, account_name : str, current_data : dict) -> None:
+        """Observer pattern for :class:`proton.session.Session` (see :meth:`proton.session.Session.register_persistence_observer`). It is called when the Session object is getting locked, because it's expected to be changed
+        and we want to avoid race conditions.
+
+        :param account_name: account name of the session
+        :type account_name: str
+        :param current_data: current session data serialized as a dictionary
+        :type current_data: dict
+        """
         if account_name is None:
             # Don't do anything, we don't know the account yet!
             return
@@ -145,7 +223,16 @@ class ProtonSSO:
         self._session_data_cache[account_name] = current_data
 
 
-    def _release_session_lock(self, account_name, new_data):
+    def _release_session_lock(self, account_name : str, new_data : dict) -> None:
+        """Observer pattern for :class:`proton.session.Session` (see :meth:`proton.session.Session.register_persistence_observer`). It is called when the Session object is getting unlocked.
+
+        If the data between has changed since :meth:`_acquire_session_lock` was called, it will be persisted in the keyring.
+
+        :param account_name: account name of the session
+        :type account_name: str
+        :param new_data: current session data serialized as a dictionary
+        :type new_data: dict
+        """
         if account_name is None:
             # Don't do anything, we don't know the account yet!
             return
