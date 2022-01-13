@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os, fcntl, re, base64
 
 from typing import TYPE_CHECKING, Optional

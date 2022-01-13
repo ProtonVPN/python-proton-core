@@ -1,3 +1,4 @@
+from __future__ import annotations
 from ._base import BasicView
 import getpass
 import sys

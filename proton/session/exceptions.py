@@ -1,4 +1,6 @@
+from __future__ import annotations
 from typing import Optional
+
 
 class ProtonError(Exception):
     """Base class for Proton API specific exceptions"""
