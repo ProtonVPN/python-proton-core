@@ -115,17 +115,22 @@ class ProtonSSO:
             return []
 
 
-    def get_session(self, account_name : Optional[str]) -> "Session":
+    def get_session(self, account_name : Optional[str], override_class : Optional[type] = None) -> "Session":
         """Get the session identified by account_name
 
         :param account_name: account name to use. If None will return an empty session (can be used as a factory)
         :type account_name: Optional[str]
+        :param override_class: Class to use for the session to be returned, by default will use proton.session.Session
+        :type override_class: Optional[type]
         :return: the Session object. It will be an empty session if there's no session for account_name
         :rtype: Session
         """
         from ..session import Session
 
-        session = Session(self._appversion, self._user_agent)
+        if override_class is None:
+            override_class = Session
+        
+        session = override_class(self._appversion, self._user_agent)
         session.register_persistence_observer(self)
 
         # If we have an account, then let's fetch the data from it. Otherwise we just ignore and return a blank session
@@ -142,9 +147,11 @@ class ProtonSSO:
         
         return session
 
-    def get_default_session(self)  -> "Session":
+    def get_default_session(self, override_class : Optional[type] = None)  -> "Session":
         """Get the default session for the system user. It will always be one valid session if one exists.
 
+        :param override_class: Class to use for the session to be returned, see :meth:`get_session`.
+        :type override_class: Optional[type]
         :return: the Session object. It will be an empty session if there's no session at all
         :rtype: Session
         """
@@ -154,7 +161,7 @@ class ProtonSSO:
         else:
             account_name = sessions[0]
 
-        return self.get_session(account_name)
+        return self.get_session(account_name, override_class)
 
     def set_default_account(self, account_name : str):
         """Set the default account for user to be account_name
