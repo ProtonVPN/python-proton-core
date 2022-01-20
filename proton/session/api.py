@@ -67,6 +67,9 @@ class Session:
 
         self.__AccountName = None
 
+        #Extra data that we want to persist (used if we load a session from a subclass)
+        self.__extrastate = None
+
         # Temporary storage for 2FA object
         self.__2FA = None
 
@@ -531,20 +534,27 @@ class Session:
         #get environment as stored in the session
         self.__environment = Environment.get_environment(data.get('Environment', None))
 
-    def __getstate__(self):
-        # If we don't have an UID, then we're not logged in and we don't want to store a state
-        if self.UID is None:
-            return {}
+        # Store everything we don't know about in extrastate
+        self.__extrastate = dict([(k, v) for k, v in data.items() if k not in ('UID','AccessToken','RefreshToken','Scopes','AccountName','Environment')])
 
-        data = {
-            #Session data
-            'UID': self.UID,
-            'AccessToken': self.__AccessToken,
-            'RefreshToken': self.__RefreshToken,
-            'Scopes': self.Scopes,
-            'Environment': self.environment.name,
-            'AccountName': self.__AccountName
-        }
+    def __getstate__(self):
+        # If we don't have an UID, then we're not logged in and we don't want to store a specific state
+        if self.UID is None:
+            data = {}
+        else:
+            data = {
+                #Session data
+                'UID': self.UID,
+                'AccessToken': self.__AccessToken,
+                'RefreshToken': self.__RefreshToken,
+                'Scopes': self.Scopes,
+                'Environment': self.environment.name,
+                'AccountName': self.__AccountName
+            }
+
+        # Add the additional extra state data that we might have
+        if self.__extrastate is not None:
+            data.update(self.__extrastate)
 
         return data
 
