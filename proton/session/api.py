@@ -332,13 +332,17 @@ class Session:
         self._requests_lock(no_condition_check)
         try:
             ret = await self.__async_api_request_internal('/auth', method='DELETE', no_condition_check=True)
-             # Erase any information we have about the session
+            # Erase any information we have about the session
             self._clear_local_data()
             return True
         except ProtonAPIError as e:
-            #If the token is already invalid, just ignore... otherwise raise
-            if e.code != 401:
-                raise
+            # If we get a 401, then we should erase data (session doesn't exist on the server), and we're fine
+            if e.http_code == 401:
+                self._clear_local_data()
+                return True
+            # We don't know what is going on, throw
+            raise
+
         finally:
             self._requests_unlock(no_condition_check)
 
