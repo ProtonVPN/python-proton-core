@@ -328,12 +328,15 @@ class Session:
         :return: True if logout was successful (or nothing was done)
         :rtype: bool
         """
-        # No-op if not authenticated
-        if not self.authenticated:
-            return True
 
         self._requests_lock(no_condition_check)
+        previous_account_name = self.AccountName
         try:
+            # No-op if not authenticated (but we do this inside the lock, so data is persisted nevertheless)
+            if not self.authenticated:
+                self._clear_local_data()
+                return True
+
             ret = await self.__async_api_request_internal('/auth', method='DELETE', no_condition_check=True)
             # Erase any information we have about the session
             self._clear_local_data()
@@ -347,7 +350,7 @@ class Session:
             raise
 
         finally:
-            self._requests_unlock(no_condition_check)
+            self._requests_unlock(no_condition_check, previous_account_name)
 
     async def async_lock(self, no_condition_check=False):
         """ Lock the current user (remove PASSWORD and LOCKED scopes)"""
@@ -580,12 +583,14 @@ class Session:
         for observer in self.__persistence_observers:
             observer._acquire_session_lock(account_name, session_data)
 
-    def _requests_unlock(self, no_condition_check=False):
+    def _requests_unlock(self, no_condition_check=False, account_name=None):
         """Unlock the session, this has to be done after doing requests that affect the session state (i.e. :meth:`authenticate` for 
         instance), to prevent race conditions.
 
         :param no_condition_check: Internal flag to disable locking, defaults to False
         :type no_condition_check: bool, optional
+        :param account_name: Allow providing explicitly the account_name of the session, useful when it's for a logout when the session might not exist any more
+        :type no_condition_check: str, optional
         """
         if no_condition_check:
             return
@@ -594,10 +599,16 @@ class Session:
             self.__can_run_requests = asyncio.Event()
         self.__can_run_requests.set()
 
+        # Only store data if we have an actual account (session not logged in shouldn't store data)
+        # If we have a known account, use it
+        if self.AccountName is not None:
+            account_name = self.AccountName
+            session_data = self.__getstate__()
+        else:
+            session_data = None
+
         # Unlock observers (we might have modified the session)
         # It's important to do it in reverse order, as otherwise there's a risk of deadlocks
-        account_name = self.AccountName
-        session_data = self.__getstate__()
         for observer in reversed(self.__persistence_observers):
             observer._release_session_lock(account_name, session_data)
 
