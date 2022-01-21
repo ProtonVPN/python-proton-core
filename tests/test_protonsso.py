@@ -72,7 +72,7 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
         sso = ProtonSSO()
 
         if 'pro' in sso.sessions:
-            await sso.get_session('pro').async_logout()
+            assert await sso.get_session('pro').async_logout()
 
         s = sso.get_session('pro')
         assert await s.async_authenticate('pro','pro')
@@ -87,7 +87,7 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
 
         sso = ProtonSSO()
         while len(sso.sessions) > 0:
-            await sso.get_default_session().async_logout()
+            assert await sso.get_default_session().async_logout()
 
         assert len(sso.sessions) == 0
         s = sso.get_default_session()
@@ -114,4 +114,53 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
             assert (await s.async_api_request('/users'))['Code'] == 1000
 
 
+    async def test_additional_data(self):
+        from proton.sso import ProtonSSO
+        from proton.session import Session
+        from proton.session.exceptions import ProtonAPIAuthenticationNeeded
 
+        os.environ['PROTON_API_ENVIRONMENT'] = 'atlas'
+
+        class SessionWithAdditionalData(Session):
+            def __init__(self, *a, **kw):
+                self.additional_data = None
+                super().__init__(*a, **kw)
+
+            def __setstate__(self, data):
+                self.additional_data = data.get('additional_data', None)
+                super().__setstate__(dict([(k, v) for k, v in data.items() if k not in ('additional_data',)]))
+
+            def __getstate__(self):
+                d = super().__getstate__()
+                if self.additional_data is not None:
+                    d['additional_data'] = self.additional_data
+                return d
+
+            async def set_additional_data(self, v):
+                self._requests_lock()
+                self.additional_data = v
+                self._requests_unlock()
+
+        sso = ProtonSSO()
+        while len(sso.sessions) > 0:
+            assert await sso.get_default_session().async_logout()
+
+        s = sso.get_default_session(SessionWithAdditionalData)
+        assert await s.async_authenticate('pro','pro')
+        await s.set_additional_data('abc123')
+
+
+        s = sso.get_default_session(SessionWithAdditionalData)
+        assert s.additional_data == 'abc123'
+
+        s = sso.get_default_session()
+        with self.assertRaises(AttributeError):
+            assert s.additional_data == 'abc123'
+
+        # Call to force persistence save
+        s._requests_lock()
+        s._requests_unlock()
+
+        # We should still have additional data
+        s = sso.get_default_session(SessionWithAdditionalData)
+        assert s.additional_data == 'abc123'
