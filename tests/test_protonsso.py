@@ -14,21 +14,21 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
 
         for i in range(2):
             sso._acquire_session_lock(fake_account_name, {})
-            sso._release_session_lock(fake_account_name,test_data_1)
+            sso._release_session_lock(fake_account_name,{'AccountName':fake_account_name,**test_data_1})
 
             assert fake_account_name in sso.sessions
-            assert sso._get_session_data(fake_account_name) == test_data_1
+            assert sso._get_session_data(fake_account_name) == {'AccountName':fake_account_name,**test_data_1}
 
             sso.set_default_account(fake_account_name)
             assert sso.sessions[0] == fake_account_name
 
             sso._acquire_session_lock(fake_account2_name, {})
-            sso._release_session_lock(fake_account2_name,test_data_2)
+            sso._release_session_lock(fake_account2_name,{'AccountName':fake_account2_name,**test_data_2})
 
             assert fake_account_name in sso.sessions
             assert fake_account2_name in sso.sessions
-            assert sso._get_session_data(fake_account_name) == test_data_1
-            assert sso._get_session_data(fake_account2_name) == test_data_2
+            assert sso._get_session_data(fake_account_name) == {'AccountName':fake_account_name,**test_data_1}
+            assert sso._get_session_data(fake_account2_name) == {'AccountName':fake_account2_name,**test_data_2}
 
             assert sso.sessions[0] == fake_account_name
             sso.set_default_account(fake_account2_name)
@@ -37,16 +37,16 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
             sso.set_default_account(fake_account_name)
             assert sso.sessions[0] == fake_account_name
             
-            sso._acquire_session_lock(fake_account_name, test_data_1)
-            sso._release_session_lock(fake_account_name,test_data_2)
+            sso._acquire_session_lock(fake_account_name, {'AccountName':fake_account_name,**test_data_1})
+            sso._release_session_lock(fake_account_name, {'AccountName':fake_account_name,**test_data_2})
 
             assert sso.sessions[0] == fake_account_name
             assert fake_account_name in sso.sessions
             assert fake_account2_name in sso.sessions
-            assert sso._get_session_data(fake_account_name) == test_data_2
-            assert sso._get_session_data(fake_account2_name) == test_data_2
+            assert sso._get_session_data(fake_account_name) == {'AccountName':fake_account_name,**test_data_2}
+            assert sso._get_session_data(fake_account2_name) == {'AccountName':fake_account2_name,**test_data_2}
 
-            sso._acquire_session_lock(fake_account_name,test_data_2)
+            sso._acquire_session_lock(fake_account_name,{'AccountName':fake_account_name,**test_data_2})
             sso._release_session_lock(fake_account_name, None)
 
             with self.assertRaises(KeyError):
@@ -54,9 +54,9 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
             assert fake_account_name not in sso.sessions
             assert fake_account2_name in sso.sessions
             assert sso._get_session_data(fake_account_name) == {}
-            assert sso._get_session_data(fake_account2_name) == test_data_2
+            assert sso._get_session_data(fake_account2_name) == {'AccountName':fake_account2_name,**test_data_2}
 
-            sso._acquire_session_lock(fake_account2_name, test_data_2)
+            sso._acquire_session_lock(fake_account2_name, {'AccountName':fake_account2_name,**test_data_2})
             sso._release_session_lock(fake_account2_name, None)
 
             assert fake_account_name not in sso.sessions
@@ -112,6 +112,35 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(ProtonAPIAuthenticationNeeded):
             assert (await s.async_api_request('/users'))['Code'] == 1000
+
+    async def test_broken_index(self):
+        from proton.loader import Loader
+        from proton.sso import ProtonSSO
+
+        sso = ProtonSSO()
+
+        
+        keyring = Loader.get('keyring')()
+        keyring[sso._ProtonSSO__keyring_index_name()] = ['pro']
+        keyring[sso._ProtonSSO__keyring_key_name('pro')] = {'additional_data': 'abc123'}
+
+        assert 'pro' not in sso.sessions
+
+    async def test_broken_data(self):
+        from proton.sso import ProtonSSO
+
+        sso = ProtonSSO()
+        sso._acquire_session_lock('pro', None)
+        with self.assertRaises(ValueError):
+            sso._release_session_lock('pro', {'abc':'123'})
+
+        sso._acquire_session_lock('pro', None)
+        sso._release_session_lock('pro', {})
+
+        sso._acquire_session_lock('pro', None)
+        sso._release_session_lock('pro', None)
+
+
 
 
     async def test_additional_data(self):

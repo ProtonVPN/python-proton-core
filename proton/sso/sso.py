@@ -107,12 +107,31 @@ class ProtonSSO:
         :return: list of normalized account_names
         :rtype: list[str]
         """
-        
-        # There is no point in locking, because anyway as soon as we exit this code, the data might not be relevant anymore
+
+        # We might remove invalid session and clean the index, so create a full lock on the SSO object
+        fcntl.flock(self._global_adv_lock, fcntl.LOCK_EX)
         try:
-            return self._keyring[self.__keyring_index_name()]
-        except KeyError:
-            return []
+            keyring = self._keyring
+
+            try:
+                keyring_index = keyring[self.__keyring_index_name()]
+            except KeyError:
+                keyring_index = []
+
+            cleaned_index = [account_name for account_name in keyring_index if len(self._get_session_data(account_name)) > 0]
+            if cleaned_index != keyring_index:
+                keyring[self.__keyring_index_name()] = cleaned_index
+
+            # Try to remove any account from keyring that we've removed from SSO
+            for removed_account in set(keyring_index).difference(cleaned_index):
+                try:
+                    del keyring[self.__keyring_key_name(removed_account)]
+                except KeyError:
+                    pass
+
+            return cleaned_index
+        finally:
+            fcntl.flock(self._global_adv_lock, fcntl.LOCK_UN)
 
 
     def get_session(self, account_name : Optional[str], override_class : Optional[type] = None) -> "Session":
@@ -203,9 +222,17 @@ class ProtonSSO:
         :rtype: dict
         """
         try:
-            return self._keyring[self.__keyring_key_name(account_name)]
+            data = self._keyring[self.__keyring_key_name(account_name)]
         except KeyError:
-            return {}
+            data = {}
+
+        # This is an encapsulation violation (we're not supposed to know that the account name is stored in AccountName)
+        # It allows us nevertheless to validate that the session contains actual data, which is good to not break if a
+        # Session implementation is invalid.
+        if data.get('AccountName') != account_name:
+            data = {}
+
+        return data
 
 
     def _acquire_session_lock(self, account_name : str, current_data : dict) -> None:
@@ -245,6 +272,9 @@ class ProtonSSO:
             return
 
         account_name = self.__normalize_account_name(account_name)
+
+        if new_data is not None and len(new_data) > 0 and new_data.get('AccountName', None) != account_name:
+            raise ValueError("Sessions need to store a valid AccountName in order to store data.")
 
         # Don't do anything if data hasn't changed
         if account_name in self._session_data_cache:
