@@ -69,14 +69,16 @@ class AiohttpTransport(Transport):
             ssl_specs = ssl.create_default_context()
             ssl_specs.verify_mode = ssl.CERT_REQUIRED
 
-        async with aiohttp.ClientSession() as s:
-            s.headers['x-pm-appversion'] = self._session.appversion
-            s.headers['User-Agent'] = self._session.user_agent
-            if self._session.authenticated:
-                s.headers['x-pm-uid'] = self._session.UID
-                s.headers['Authorization'] = 'Bearer ' + self._session.AccessToken
-            s.headers.update(self._environment.http_extra_headers)
+        headers = {
+            'x-pm-appversion': self._session.appversion,
+            'User-Agent': self._session.user_agent,
+        }
+        if self._session.authenticated:
+            headers['x-pm-uid'] = self._session.UID
+            headers['Authorization'] = 'Bearer ' + self._session.AccessToken
+        headers.update(self._environment.http_extra_headers)
 
+        async with aiohttp.ClientSession(headers=headers) as s:
             # If we don't have an explicit method, default to get if there's no data, post otherwise
             if method is None:
                 if jsondata is None:
