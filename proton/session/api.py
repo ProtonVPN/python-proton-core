@@ -412,6 +412,7 @@ class Session:
         self.__RefreshToken = None
         self.__Scopes = None
         self.__2FA = None
+        self.__extrastate=None
 
     @property
     def transport_factory(self):
@@ -555,10 +556,9 @@ class Session:
                 'Environment': self.environment.name,
                 'AccountName': self.__AccountName
             }
-
-        # Add the additional extra state data that we might have
-        if self.__extrastate is not None:
-            data.update(self.__extrastate)
+            # Add the additional extra state data that we might have
+            if self.__extrastate is not None:
+                data.update(self.__extrastate)
 
         return data
 
