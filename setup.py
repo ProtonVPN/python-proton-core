@@ -28,6 +28,7 @@ setup(
             "prod = proton.session.environments:ProdEnvironment",
             "atlas = proton.session.environments:AtlasEnvironment",
             "ci = proton.session.environments:CIEnvironment",
+            "url = proton.session.environments:URLEnvironment",
         ],
         "proton_loader_basicview": [
             "cli = proton.views.basiccli:BasicCLIView"

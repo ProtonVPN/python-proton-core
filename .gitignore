@@ -12,3 +12,5 @@ html
 
 .idea/
 .pybuild/
+.coverage
+report.xml

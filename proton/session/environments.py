@@ -161,3 +161,26 @@ class CIEnvironment(Environment):
     def tls_pinning_hashes_ar(self):
         #No pinning for CI environment
         return None
+
+class URLEnvironment(Environment):
+    @classmethod
+    def _get_priority(cls):
+        import os
+        if os.environ.get('PROTON_API_URL'):
+            return 100
+        else:
+            return -100
+    
+    @property
+    def http_base_url(self):
+        import os
+        return os.environ.get('PROTON_API_URL')
+
+    @property
+    def tls_pinning_hashes(self):
+        return None
+
+    @property
+    def tls_pinning_hashes_ar(self):
+        #No pinning for CI environment
+        return None

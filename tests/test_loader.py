@@ -12,7 +12,7 @@ class LoaderTest(unittest.TestCase):
         self._loader = None
 
     def test_environments_explicit(self):
-        from proton.session.environments import ProdEnvironment, AtlasEnvironment, CIEnvironment
+        from proton.session.environments import ProdEnvironment, AtlasEnvironment, CIEnvironment, URLEnvironment
 
         self._loader.set_all('environment', {'prod': ProdEnvironment, 'atlas': AtlasEnvironment})
         assert len(self._loader.get_all('environment')) == 2
@@ -25,13 +25,15 @@ class LoaderTest(unittest.TestCase):
         assert self._loader.get('environment') == AtlasEnvironment
         assert len(self._loader.get_all('environment')) == 2
 
+
         assert self._loader.get_name(ProdEnvironment) == ('environment','prod')
         assert self._loader.get_name(AtlasEnvironment) == ('environment','atlas')
-        # This one is not loaded since we used set_all
+        # This ones are not loaded since we used set_all
         assert self._loader.get_name(CIEnvironment) is None
+        assert self._loader.get_name(URLEnvironment) is None
 
     def test_environments(self):
-        from proton.session.environments import ProdEnvironment, AtlasEnvironment, CIEnvironment
+        from proton.session.environments import ProdEnvironment, AtlasEnvironment, CIEnvironment, URLEnvironment
 
         if len(self._loader.get_all('environment')) == 0:
             self.skipTest("No environments, probably because we have not entry points set up.")
@@ -46,3 +48,4 @@ class LoaderTest(unittest.TestCase):
         assert self._loader.get_name(ProdEnvironment) == ('environment','prod')
         assert self._loader.get_name(AtlasEnvironment) == ('environment','atlas')
         assert self._loader.get_name(CIEnvironment) == ('environment','ci')
+        assert self._loader.get_name(URLEnvironment) == ('environment','url')
