@@ -535,6 +535,20 @@ class Session:
         self.__environment = newvalue
 
     def __setstate__(self, data):
+        # If we're running an unpickle, then the object constructor hasn't been called, so we need to populate __dict__
+        for attr, default in (('gnupg_for_modulus', None), ('can_run_requests', None), ('transport', None), ('persistence_observers', [])):
+            if '_Session__' + attr not in self.__dict__:
+                self.__dict__['_Session__' + attr] = default
+
+        # Restore data from LastUseData if we don't have it already (allow pickle load)
+        for attr, default in (('2FA', None), ('appversion', 'Other'), ('user_agent', 'None'), ('refresh_revision', 0)):
+            if '_Session__' + attr not in self.__dict__:
+                self.__dict__['_Session__' + attr] = data.get('LastUseData', {}).get(attr, default)
+        
+        # We don't pickle the transport, so if not set just use the default
+        if '_Session__transport_factory' not in self.__dict__:
+            self.transport_factory = None
+
         self.__UID = data.get('UID', None)
         self.__AccessToken = data.get('AccessToken', None)
         self.__RefreshToken = data.get('RefreshToken', None)
@@ -546,7 +560,7 @@ class Session:
         self.__environment = Environment.get_environment(data.get('Environment', None))
 
         # Store everything we don't know about in extrastate
-        self.__extrastate = dict([(k, v) for k, v in data.items() if k not in ('UID','AccessToken','RefreshToken','Scopes','AccountName','Environment')])
+        self.__extrastate = dict([(k, v) for k, v in data.items() if k not in ('UID','AccessToken','RefreshToken','Scopes','AccountName','Environment', 'LastUseData')])
 
     def __getstate__(self):
         # If we don't have an UID, then we're not logged in and we don't want to store a specific state
@@ -560,7 +574,13 @@ class Session:
                 'RefreshToken': self.__RefreshToken,
                 'Scopes': self.Scopes,
                 'Environment': self.environment.name,
-                'AccountName': self.__AccountName
+                'AccountName': self.__AccountName,
+                'LastUseData': {
+                    '2FA': self.__2FA,
+                    'appversion': self.__appversion,
+                    'user_agent': self.__user_agent,
+                    'refresh_revision': self.__refresh_revision,
+                }
             }
             # Add the additional extra state data that we might have
             data.update(self.__extrastate)
