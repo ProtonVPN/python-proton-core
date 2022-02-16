@@ -69,7 +69,7 @@ class Session:
         self.__AccountName = None
 
         #Extra data that we want to persist (used if we load a session from a subclass)
-        self.__extrastate = None
+        self.__extrastate = {}
 
         # Temporary storage for 2FA object
         self.__2FA = None
@@ -418,7 +418,7 @@ class Session:
         self.__RefreshToken = None
         self.__Scopes = None
         self.__2FA = None
-        self.__extrastate=None
+        self.__extrastate = {}
 
     @property
     def transport_factory(self):
@@ -563,8 +563,7 @@ class Session:
                 'AccountName': self.__AccountName
             }
             # Add the additional extra state data that we might have
-            if self.__extrastate is not None:
-                data.update(self.__extrastate)
+            data.update(self.__extrastate)
 
         return data
 
