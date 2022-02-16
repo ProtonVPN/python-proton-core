@@ -162,7 +162,7 @@ class Session:
                 #Something else, throw
                 raise
 
-    async def async_authenticate(self, username: str, password: str, no_condition_check:bool=False) -> bool:
+    async def async_authenticate(self, username: str, password: str, no_condition_check:bool=False, additional_headers=None) -> bool:
         """Authenticate against Proton API
 
         :param username: Proton account username
@@ -179,7 +179,9 @@ class Session:
         await self.async_logout(no_condition_check=True)
 
         try:
-            info_response = await self.__async_api_request_internal("/auth/info", {"Username": username}, no_condition_check=True)
+            info_response = await self.__async_api_request_internal("/auth/info", {"Username": username},
+                                                                    no_condition_check=True,
+                                                                    additional_headers=additional_headers)
 
             modulus = self._verify_modulus(info_response['Modulus'])
             server_challenge = base64.b64decode(info_response["ServerEphemeral"])
@@ -203,7 +205,8 @@ class Session:
                 "SRPSession": info_response["SRPSession"],
             }
             try:
-                auth_response = await self.__async_api_request_internal("/auth", payload, no_condition_check=True)
+                auth_response = await self.__async_api_request_internal("/auth", payload, no_condition_check=True,
+                                                                        additional_headers=additional_headers)
             except ProtonAPIError as e:
                 if e.body_code == 8002:
                     return False
@@ -233,7 +236,7 @@ class Session:
 
     
 
-    async def async_provide_2fa(self, code : str, no_condition_check=False) -> bool:
+    async def async_provide_2fa(self, code : str, no_condition_check=False, additional_headers=None) -> bool:
         """Provide Two Factor Authentication Code to the API.
         
         :param code: 2FA code
@@ -248,7 +251,7 @@ class Session:
         try:
             ret = await self.__async_api_request_internal('/auth/2fa', {
                 "TwoFactorCode": code
-            }, no_condition_check=True)
+            }, no_condition_check=True, additional_headers=additional_headers)
             self.__Scopes = ret['Scopes']
             if ret.get('Code') == 1000:
                 self.__2FA = None
@@ -267,7 +270,7 @@ class Session:
         finally:
             self._requests_unlock(no_condition_check)
 
-    async def async_refresh(self, only_when_refresh_revision_is=None, no_condition_check=False):
+    async def async_refresh(self, only_when_refresh_revision_is=None, no_condition_check=False, additional_heades=None):
         """Refresh tokens.
 
         Refresh AccessToken with a valid RefreshToken.
@@ -298,7 +301,7 @@ class Session:
                         "GrantType": "refresh_token",
                         "RefreshToken": self.__RefreshToken,
                         "RedirectURI": "http://protonmail.ch"
-                    }, no_condition_check=True)
+                    }, no_condition_check=True, additional_headers=additional_heades)
                     self.__AccessToken = refresh_response["AccessToken"]
                     self.__RefreshToken = refresh_response["RefreshToken"]
                     self.__Scopes = refresh_response["Scopes"]
@@ -323,7 +326,7 @@ class Session:
 
 
 
-    async def async_logout(self, no_condition_check=False):
+    async def async_logout(self, no_condition_check=False, additional_headers=None):
         """Logout from API.
         
         :return: True if logout was successful (or nothing was done)
@@ -338,7 +341,8 @@ class Session:
                 self._clear_local_data()
                 return True
 
-            ret = await self.__async_api_request_internal('/auth', method='DELETE', no_condition_check=True)
+            ret = await self.__async_api_request_internal('/auth', method='DELETE', no_condition_check=True,
+                                                          additional_headers=additional_headers)
             # Erase any information we have about the session
             self._clear_local_data()
             return True
@@ -353,13 +357,15 @@ class Session:
         finally:
             self._requests_unlock(no_condition_check, previous_account_name)
 
-    async def async_lock(self, no_condition_check=False):
+    async def async_lock(self, no_condition_check=False, additional_headers=None):
         """ Lock the current user (remove PASSWORD and LOCKED scopes)"""
 
         self._requests_lock(no_condition_check)
         try:
-            ret = await self.__async_api_request_internal('/users/lock', method='PUT', no_condition_check=True)
-            ret = await self.__async_api_request_internal('/auth/scopes', no_condition_check=True)
+            ret = await self.__async_api_request_internal('/users/lock', method='PUT', no_condition_check=True,
+                                                          additional_headers=additional_headers)
+            ret = await self.__async_api_request_internal('/auth/scopes', no_condition_check=True,
+                                                          additional_headers=additional_headers)
             self.__Scopes = ret['Scopes']
             return True
         finally:
@@ -368,7 +374,7 @@ class Session:
 
     #FIXME: implement unlock
 
-    async def async_human_verif_request_code(self, address=None, phone=None):
+    async def async_human_verif_request_code(self, address=None, phone=None, additional_headers=None):
         """Request a verification code. Either address (email address) or phone (phone number) should be specified."""
         assert address is not None ^ phone is not None # nosec (we use email validation by default if both are provided, but it's not super clean if the dev doesn't know about it)
 
@@ -377,7 +383,7 @@ class Session:
         elif phone is not None:
             data = {'Type': 'sms', 'Destination': {'Phone': phone}}
         
-        return await self.async_api_request('/users/code', data).get('Code', 0) == 1000
+        return await self.async_api_request('/users/code', data, additional_headers=additional_headers).get('Code', 0) == 1000
 
     async def async_human_verif_provide_token(self, method, token):
         pass
