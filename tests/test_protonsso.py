@@ -2,6 +2,12 @@ import unittest
 import os
 
 class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self._env_backup = os.environ.copy()
+
+    def tearDown(self):
+        os.environ = self._env_backup
+
     async def test_sessions(self):
         from proton.sso import ProtonSSO
 

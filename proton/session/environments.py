@@ -102,17 +102,17 @@ class AtlasEnvironment(Environment):
     @property
     def _atlas_scientist(self):
         import os
-        environment = os.getenv('PROTON_API_ENVIRONMENT', '')
-        if not environment.startswith('atlas:'):
+        environment_split = os.getenv('PROTON_API_ENVIRONMENT', '').split(":", 1)
+        if environment_split[0] != "atlas" or len(environment_split) <= 1:
             return None
             
-        scientist = environment[6:]
-        return scientist
+        return environment_split[1]
 
     @property
     def http_base_url(self):
-        if self._atlas_scientist is not None:
-            return f"https://api.{self._atlas_scientist}.proton.black"
+        scientist = self._atlas_scientist
+        if scientist:
+            return f"https://api.{scientist}.proton.black"
         else:
             return f"https://api.proton.black"
 
@@ -147,15 +147,13 @@ class CIEnvironment(Environment):
     
     @property
     def http_base_url(self):
-        return f"https://154.16.88.126/api"
+        return f"https://138.199.50.142"
 
     @property
     def tls_pinning_hashes(self):
-        return set([
-            "drtmcR2kFkM8qJClsuWgUzxgBkePfRCkRpqUesyDmeE=",
-            "YRGlaY0jyJ4Jw2/4M8FIftwbDIQfh8Sdro96CeEel54=",
-            "AfMENBVvOS8MnISprtvyPsjKlPooqh8nMB/pvCrpJpw=",
-        ])
+        return {
+            "e7gl+YVDm8yjCKj4WZna3FucEL4t84TSK7AKTLscxCc=",
+        }
 
     @property
     def tls_pinning_hashes_ar(self):
