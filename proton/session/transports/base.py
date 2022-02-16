@@ -13,6 +13,10 @@ class Transport:
         #Shortcut to access environment
         return self._session.environment
 
+    def __eq__(self, other):
+        # It's the same transport if it's the same type (that's what users would generally assume)
+        return self.__class__ == other.__class__
+
     async def is_working(self):
         try:
             return await self.async_api_request('/tests/ping').get('Code') == '1000'
@@ -34,3 +38,7 @@ class TransportFactory:
 
     def __call__(self, session):
         return self._cls(session, *self._args, **self._kwargs)
+
+    def __eq__(self, other):
+        # It's the same transport if it's the same type (that's what users would generally assume)
+        return self._cls == other._cls
