@@ -1,0 +1,7 @@
+files
+debhelper-build-stamp
+python3-proton-core.postinst.debhelper
+python3-proton-core.prerm.debhelper
+python3-proton-core.substvars
+.debhelper/
+python3-proton-core

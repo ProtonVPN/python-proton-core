@@ -1,0 +1,13 @@
+Source: proton-core
+Section: python
+Priority: optional
+Maintainer: Xavier Piroux <xavier.piroux@proton.ch>
+Build-Depends: debhelper (>= 9), dh-python, python3-all, python3-setuptools, python3-bcrypt, python3-gnupg, python3-openssl, python3-requests, python3-aiohttp, python3-importlib-metadata, python3-pyotp
+Standards-Version: 4.1.1
+X-Python3-Version: >= 3.2
+
+Package: python3-proton-core
+Conflicts: python3-proton-client
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}, python3-bcrypt, python3-gnupg, python3-openssl, python3-requests, python3-aiohttp, python3-importlib-metadata
+Description: ProtonVPN client core library (python3)
