@@ -109,8 +109,8 @@ class Session:
         :type jsondata: dict
         :param additional_headers: additional headers to send
         :type additional_headers: dict
-        :param additional_headers: HTTP method (get|post|put|delete|patch)
-        :type additional_headers: str
+        :param method: HTTP method (get|post|put|delete|patch)
+        :type method: str
         :param params: URL parameters to append to the URL. If a dictionary or
             list of tuples ``[(key, value)]`` is provided, form-encoding will
             take place.
@@ -162,7 +162,7 @@ class Session:
                 #Something else, throw
                 raise
 
-    async def async_authenticate(self, username: str, password: str, no_condition_check:bool=False, additional_headers=None) -> bool:
+    async def async_authenticate(self, username: str, password: str, no_condition_check: bool = False, additional_headers=None) -> bool:
         """Authenticate against Proton API
 
         :param username: Proton account username
@@ -171,6 +171,8 @@ class Session:
         :type password: str
         :param no_condition_check: Internal flag to disable locking, defaults to False
         :type no_condition_check: bool, optional
+        :param additional_headers: additional headers to send
+        :type additional_headers: dict
         :return: True if authentication succeeded, False otherwise.
         :rtype: bool
         """
