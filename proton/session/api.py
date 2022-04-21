@@ -162,13 +162,15 @@ class Session:
                 #Something else, throw
                 raise
 
-    async def async_authenticate(self, username: str, password: str, no_condition_check: bool = False, additional_headers=None) -> bool:
+    async def async_authenticate(self, username: str, password: str, client_secret: str = None, no_condition_check: bool = False, additional_headers=None) -> bool:
         """Authenticate against Proton API
 
         :param username: Proton account username
         :type username: str
         :param password: Proton account password
         :type password: str
+        :param client_secret: Client Secret for SRP
+        :type client_secret: str, optional
         :param no_condition_check: Internal flag to disable locking, defaults to False
         :type no_condition_check: bool, optional
         :param additional_headers: additional headers to send
@@ -181,7 +183,10 @@ class Session:
         await self.async_logout(no_condition_check=True)
 
         try:
-            info_response = await self.__async_api_request_internal("/auth/info", {"Username": username},
+            req_data = {"Username": username}
+            if client_secret is not None:
+                req_data["ClientSecret"] = client_secret
+            info_response = await self.__async_api_request_internal("/auth/info", req_data,
                                                                     no_condition_check=True,
                                                                     additional_headers=additional_headers)
 
@@ -206,6 +211,8 @@ class Session:
                 "ClientProof": base64.b64encode(client_proof).decode('utf8'),
                 "SRPSession": info_response["SRPSession"],
             }
+            if client_secret is not None:
+                payload["ClientSecret"] = client_secret
             try:
                 auth_response = await self.__async_api_request_internal("/auth", payload, no_condition_check=True,
                                                                         additional_headers=additional_headers)
