@@ -5,6 +5,7 @@ from proton import session
 from .exceptions import ProtonCryptoError, ProtonAPIError, ProtonAPIAuthenticationNeeded, ProtonAPI2FANeeded, ProtonAPIMissingScopeError, ProtonAPIHumanVerificationNeeded
 from .srp import User as PmsrpUser
 from .environments import Environment
+from ..loader import Loader
 
 import asyncio
 import base64
@@ -518,7 +519,8 @@ class Session:
         If the new value is:
         
         * None: do nothing
-        * a string: will use :meth:`.Environment.get_environment` to get the actual class.
+        * a string: will use :meth:`Loader.get("environment", newvalue)` to get the actual class.
+        * an environment: use it
         """
         if self.__environment is None:
             from proton.loader import Loader
@@ -531,7 +533,7 @@ class Session:
         if newvalue is None:
             return
         if isinstance(newvalue, str):
-            newvalue = Environment.get_environment(newvalue)
+            newvalue = Loader.get("environment", newvalue)()
         if not isinstance(newvalue, Environment):
             raise TypeError("environment should be a subclass of Environment")
 
@@ -566,7 +568,7 @@ class Session:
         #Reset transport (user agent etc might have changed)
         self.__transport = None
         #get environment as stored in the session
-        self.__environment = Environment.get_environment(data.get('Environment', None))
+        self.__environment: Environment = Loader.get("environment", data.get('Environment', None))()
 
         # Store everything we don't know about in extrastate
         self.__extrastate = dict([(k, v) for k, v in data.items() if k not in ('UID','AccessToken','RefreshToken','Scopes','AccountName','Environment', 'LastUseData')])

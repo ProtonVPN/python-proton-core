@@ -8,35 +8,6 @@ class Environment(metaclass=abc.ABCMeta):
         assert cls_name.endswith('Environment'), "Incorrectly named class" # nosec (dev should ensure that to avoid issues)
         return cls_name[:-11].lower()
 
-    @classmethod
-    def get_environment(cls, name: str) -> Optional["Environment"]:
-        if name is None:
-            return None
-        if cls.__name__.lower() == name + 'environment':
-            return cls
-
-        for c in cls.__subclasses__():
-            env = c.get_environment(name)
-            if env is not None:
-                return env()
-
-        return None
-
-    @classmethod
-    def default_environment(cls):
-        import os
-        env = os.environ.get('PROTON_API_ENVIRONMENT', None)
-        if env is not None:
-            #Split to get the first part, if possible
-            env = env.split(':')[0]
-            env_obj = cls.get_environment(env)
-            if env_obj is not None:
-                return env_obj
-            else:
-                import warnings
-                warnings.warn(f"PROTON_API_ENVIRONMENT is set to an unknown value: {env!r}, fallback to prod")
-        return ProdEnvironment()
-
     @property
     def http_extra_headers(self):
         #This can be overriden, but by default we don't add extra headers
