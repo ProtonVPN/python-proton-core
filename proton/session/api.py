@@ -568,7 +568,10 @@ class Session:
         #Reset transport (user agent etc might have changed)
         self.__transport = None
         #get environment as stored in the session
-        self.__environment: Environment = Loader.get("environment", data.get('Environment', None))()
+        if data.get('Environment', None) is not None:
+            self.__environment: Environment = Loader.get("environment", data.get('Environment', None))()
+        else:
+            self.__environment = None
 
         # Store everything we don't know about in extrastate
         self.__extrastate = dict([(k, v) for k, v in data.items() if k not in ('UID','AccessToken','RefreshToken','Scopes','AccountName','Environment', 'LastUseData')])
