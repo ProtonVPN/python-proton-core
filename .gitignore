@@ -9,8 +9,8 @@ __SOURCE_APP
 .env
 cov.xml
 html
-
 .idea/
 .pybuild/
 .coverage
 report.xml
+venv

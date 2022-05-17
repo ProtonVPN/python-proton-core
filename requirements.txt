@@ -1,5 +1,1 @@
-requests>=2.16
-bcrypt
-python-gnupg
-pyopenssl
-aiohttp
+-e ".[test]"

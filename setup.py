@@ -9,8 +9,10 @@ setup(
     author="Proton Technologies",
     author_email="contact@protonmail.com",
     url="https://github.com/ProtonMail/python-proton-core",
-    install_requires=["requests", "bcrypt", "python-gnupg", "pyopenssl", "importlib-metadata; python_version < '3.8'"],
-    tests_requires=['pyotp'],
+    install_requires=["requests", "bcrypt", "python-gnupg", "pyopenssl", "aiohttp", "importlib-metadata; python_version < '3.8'"],
+    extras_require={
+        "test": ["pytest", "pyotp"]
+    },
     entry_points={
         "console_scripts": [
             ['proton-sso=proton.sso:main'],
