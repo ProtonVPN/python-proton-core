@@ -1,10 +1,16 @@
 from __future__ import annotations
-import os, fcntl, re, base64
 
+import base64
+import fcntl
+import os
+import re
 from typing import TYPE_CHECKING, Optional
+
+from proton.keyring import Keyring
+
 if TYPE_CHECKING:
-    from ..keyring._base import KeyringBackend
     from ..session import Session
+
 
 # We don't necessarily need it to be a singleton, it doesn't harm in itself if multiple instances are created
 class ProtonSSO:
@@ -46,6 +52,7 @@ class ProtonSSO:
 
         # This is a global lock, we use it when we modify the indexes
         self._global_adv_lock = open(os.path.join(self._adv_locks_path, f'proton-sso.lock'), 'w')
+        self.__keyring_backend = None
 
     def __normalize_account_name(self, account_name : str) -> str:
         """Normalized account_name to avoid variability like caps variation.
@@ -91,15 +98,20 @@ class ProtonSSO:
         return f'proton-sso-accounts'
 
     @property
-    def _keyring(self) -> "KeyringBackend":
+    def _keyring(self) -> "Keyring":
         """Shortcut to get the default keyring backend
 
-        :return: an instance of the default KeyringBackend
-        :rtype: KeyringBackend
+        :return: an instance of the default Keyring
+        :rtype: Keyring
         """
-        # Just to make our life simpler
-        from proton.loader import Loader
-        return Loader.get('keyring')()
+        if self.__keyring_backend is None:
+            self.__keyring_backend = Keyring.get_from_factory()
+        elif not isinstance(self.__keyring_backend, type(Keyring.get_from_factory())):
+            # If the current keyring does not match the keyring we were using previously,
+            # then something must've changed in the env and we should raise an exception.
+            raise RuntimeError("Keyring backends do not match")
+
+        return self.__keyring_backend
 
     @property
     def sessions(self) -> list[str]:
@@ -134,7 +146,6 @@ class ProtonSSO:
         finally:
             fcntl.flock(self._global_adv_lock, fcntl.LOCK_UN)
 
-
     def get_session(self, account_name : Optional[str], override_class : Optional[type] = None) -> "Session":
         """Get the session identified by account_name
 
@@ -149,7 +160,7 @@ class ProtonSSO:
 
         if override_class is None:
             override_class = Session
-        
+
         session = override_class(self._appversion, self._user_agent)
         session.register_persistence_observer(self)
 
@@ -164,7 +175,7 @@ class ProtonSSO:
 
         if session_data is not None:
             session.__setstate__(session_data)
-        
+
         return session
 
     def get_default_session(self, override_class : Optional[type] = None)  -> "Session":
@@ -211,8 +222,6 @@ class ProtonSSO:
             
         finally:
             fcntl.flock(self._global_adv_lock, fcntl.LOCK_UN)
-            
-
 
     def _get_session_data(self, account_name : str) -> dict:
         """Helper function to get data of a session, returns an empty dict if no data is present

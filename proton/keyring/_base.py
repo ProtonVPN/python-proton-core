@@ -1,13 +1,13 @@
-from abc import ABCMeta, abstractmethod
 import re
-from typing import Union, Optional
+from typing import Union
+from proton.loader import Loader
 
 
-class KeyringBackend(metaclass=ABCMeta):
+class Keyring:
     """Base class for keyring implementations.
 
-    Keyrings emulate a dictionary, with: 
-    
+    Keyrings emulate a dictionary, with:
+
     * keys: lower case alphanumeric strings (dashes are allowed)
     * values: JSON-serializable list or dictionary.
     """
@@ -15,11 +15,23 @@ class KeyringBackend(metaclass=ABCMeta):
         pass
 
     @classmethod
-    def _get_priority(cls) -> Optional[float]:
-        """Return the priority of the specific class (see :class:`proton.loader.loader.Loader`)"""
-        return None
+    def get_from_factory(cls, backend: str = None) -> "Keyring":
+        """
+            :param backend: Optional.
+                Specific backend name.
 
-    @abstractmethod
+        If backend is passed then it will attempt to get that specific
+        backend, otherwise it will attempt to get the default backend.
+        The definition of default is as follows:
+
+         - The backend passes the `_validate()`
+         - The backend with the highest `_get_priority()` value
+        :raises RuntimeError: if there's no available backend
+        """
+        keyring_backend = Loader.get("keyring", class_name=backend)
+
+        return keyring_backend()
+
     def __getitem__(self, key: str):
         """Get an item from the keyring
 
@@ -27,11 +39,11 @@ class KeyringBackend(metaclass=ABCMeta):
         :type key: str
         :raises TypeError: if key is not of valid type
         :raises ValueError: if key doesn't satisfy constraints
-        :raises RuntimeError: if there's something broken with keyring
+        :raises KeyringNotWorking: if there's something broken with keyring
         """
-        pass
+        self._ensure_key_is_valid(key)
+        return self._get_item(key)
 
-    @abstractmethod
     def __delitem__(self, key: str):
         """Remove an item from the keyring
 
@@ -39,10 +51,10 @@ class KeyringBackend(metaclass=ABCMeta):
         :type key: str
         :raises TypeError: if key is not of valid type
         :raises ValueError: if key doesn't satisfy constraints
-        :raises RuntimeError: if there's something broken with keyring"""
-        pass
+        :raises KeyringNotWorking: if there's something broken with keyring"""
+        self._ensure_key_is_valid(key)
+        self._del_item(key)
 
-    @abstractmethod
     def __setitem__(self, key: str, value: Union[dict, list]):
         """Add or replace an item in the keyring
 
@@ -52,9 +64,20 @@ class KeyringBackend(metaclass=ABCMeta):
         :type value: dict or list
         :raises TypeError: if key or value is not of valid type
         :raises ValueError: if key or value doesn't satisfy constraints
-        :raises RuntimeError: if there's something broken with keyring
+        :raises KeyringNotWorking: if there's something broken with keyring
         """
-        pass
+        self._ensure_key_is_valid(key)
+        self._ensure_value_is_valid(value)
+        self._set_item(key, value)
+
+    def _get_item(self, key: str):
+        raise NotImplementedError
+
+    def _del_item(self, key: str):
+        raise NotImplementedError
+
+    def _set_item(self, key: str, value: Union[dict, list]):
+        raise NotImplementedError
 
     def _ensure_key_is_valid(self, key):
         """Ensure key satisfies requirements"""
@@ -67,3 +90,11 @@ class KeyringBackend(metaclass=ABCMeta):
         """Ensure value satisfies requirements"""
         if not isinstance(value, dict) and not isinstance(value, list):
             raise TypeError(f"Provided value {value} is not a valid type (expect dict or list)")
+
+    @classmethod
+    def _get_priority(cls) -> int:
+        return None
+
+    @classmethod
+    def _validate(cls):
+        return False
