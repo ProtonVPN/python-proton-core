@@ -7,6 +7,12 @@ class TestAtlasEnvironment(unittest.IsolatedAsyncioTestCase):
     def tearDown(self):
         os.environ = self._env_backup
 
+    def _skip_if_no_internal_environments(self):
+        try:
+            from proton.session_internal.environments import AtlasEnvironment
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("Couldn't load proton-core-internal environments, they are probably not installed on this machine, so skip this test.")
+
     async def _skip_if_atlas_is_not_reachable(self):
         from proton.session import Session
         from proton.session.exceptions import ProtonAPINotReachable
@@ -23,6 +29,7 @@ class TestAtlasEnvironment(unittest.IsolatedAsyncioTestCase):
 
 
     async def test_atlas_global(self):
+        self._skip_if_no_internal_environments()
         await self._skip_if_atlas_is_not_reachable()
 
         from proton.session import Session
@@ -34,6 +41,7 @@ class TestAtlasEnvironment(unittest.IsolatedAsyncioTestCase):
 
     async def test_atlas_invalid_environment(self):
         from proton.session.exceptions import ProtonAPINotReachable
+        self._skip_if_no_internal_environments()
         await self._skip_if_atlas_is_not_reachable()
         
         os.environ['PROTON_API_ENVIRONMENT'] = 'atlas:nonexistentenvironment'
@@ -44,6 +52,7 @@ class TestAtlasEnvironment(unittest.IsolatedAsyncioTestCase):
             await s.async_api_request('/tests/ping') == {'Code': 1000}
 
     async def test_atlas_secret_missing(self):
+        self._skip_if_no_internal_environments()
         from proton.session.exceptions import ProtonAPINotReachable
         if 'PROTON_ATLAS_SECRET' not in os.environ:
             self.skipTest("Cannot run test if secret is not provided")

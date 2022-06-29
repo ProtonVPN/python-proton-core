@@ -12,7 +12,11 @@ class LoaderTest(unittest.TestCase):
         self._loader = None
 
     def test_environments_explicit(self):
-        from proton.session.environments import ProdEnvironment, AtlasEnvironment, CIEnvironment, URLEnvironment
+        from proton.session.environments import ProdEnvironment
+        try:
+            from proton.session_internal.environments import AtlasEnvironment, CIEnvironment, URLEnvironment
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("Couldn't load proton-core-internal environments, they are probably not installed on this machine, so skip this test.")
 
         self._loader.set_all('environment', {'prod': ProdEnvironment, 'atlas': AtlasEnvironment})
         assert len(self._loader.get_all('environment')) == 2
@@ -33,7 +37,11 @@ class LoaderTest(unittest.TestCase):
         assert self._loader.get_name(URLEnvironment) is None
 
     def test_environments(self):
-        from proton.session.environments import ProdEnvironment, AtlasEnvironment, CIEnvironment, URLEnvironment
+        from proton.session.environments import ProdEnvironment
+        try:
+            from proton.session_internal.environments import AtlasEnvironment, CIEnvironment, URLEnvironment
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("Couldn't load proton-core-internal environments, they are probably not installed on this machine, so skip this test.")
 
         if len(self._loader.get_all('environment')) == 0:
             self.skipTest("No environments, probably because we have not entry points set up.")

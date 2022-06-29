@@ -8,6 +8,12 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
     def tearDown(self):
         os.environ = self._env_backup
 
+    def _skip_if_no_internal_environments(self):
+        try:
+            from proton.session_internal.environments import AtlasEnvironment
+        except (ImportError, ModuleNotFoundError):
+            self.skipTest("Couldn't load proton-core-internal environments, they are probably not installed on this machine, so skip this test.")
+
     async def test_sessions(self):
         from proton.sso import ProtonSSO
 
@@ -73,6 +79,8 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
     async def test_with_real_session(self):
         from proton.sso import ProtonSSO
 
+        self._skip_if_no_internal_environments()
+
         os.environ['PROTON_API_ENVIRONMENT'] = 'atlas'
 
         sso = ProtonSSO()
@@ -88,6 +96,8 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
     async def test_default_session(self):
         from proton.sso import ProtonSSO
         from proton.session.exceptions import ProtonAPIAuthenticationNeeded
+
+        self._skip_if_no_internal_environments()
 
         os.environ['PROTON_API_ENVIRONMENT'] = 'atlas'
 
@@ -153,6 +163,8 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
         from proton.sso import ProtonSSO
         from proton.session import Session
         from proton.session.exceptions import ProtonAPIAuthenticationNeeded
+
+        self._skip_if_no_internal_environments()
 
         os.environ['PROTON_API_ENVIRONMENT'] = 'atlas'
 
