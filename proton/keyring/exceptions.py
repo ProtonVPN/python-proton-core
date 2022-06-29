@@ -6,5 +6,5 @@ class KeyringError(Exception):
         super().__init__(self.message)
 
 
-class KeyringNotWorking(KeyringError):
-    """If for some reason the keyring is not accessible, then this exception should be raised"""
+class KeyringLocked(KeyringError):
+    """When keyring is locked but it shouldn't be, this exception is raised"""

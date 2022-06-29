@@ -1,10 +1,9 @@
 from proton.keyring.textfile import KeyringBackendJsonFiles
-from proton.keyring.exceptions import KeyringNotWorking
 import tempfile
 import pytest
 import json
 import os
-from unittest import mock
+from proton.keyring.exceptions import KeyringError
 
 
 @pytest.fixture
@@ -51,7 +50,7 @@ def test_get_item_raises_exception_corrupted_json_data(mock_path_config):
         f.write("{\"test:}")
 
     k = KeyringBackendJsonFiles(path_config=mock_path_config)
-    with pytest.raises(KeyringNotWorking):
+    with pytest.raises(KeyError):
         k._get_item("test-get-keyring")
 
 
@@ -63,5 +62,11 @@ def test_del_item_raises_exception_filepath_does_not_exist(mock_path_config):
 
 def test_set_item_raises_exception_unable_to_write_in_path():
     k = KeyringBackendJsonFiles(path_config="fake-dirpath")
-    with pytest.raises(KeyringNotWorking):
+    with pytest.raises(KeyringError):
         k._set_item("test", ["test"])
+
+
+def test_set_item_serialize_invalid_json_object_raises_exception(mock_path_config):
+    k = KeyringBackendJsonFiles(path_config=mock_path_config)
+    with pytest.raises(ValueError):
+        k._set_item("test", {1, 2, 3, 4, 5})

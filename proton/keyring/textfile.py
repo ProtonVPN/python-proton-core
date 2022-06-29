@@ -3,7 +3,7 @@ import os
 
 from ..utils import ExecutionEnvironment
 from ._base import Keyring
-from .exceptions import KeyringNotWorking
+from .exceptions import KeyringError
 
 
 class KeyringBackendJsonFiles(Keyring):
@@ -20,30 +20,33 @@ class KeyringBackendJsonFiles(Keyring):
         if not os.path.exists(filepath):
             raise KeyError(key)
 
-        with open(filepath, 'r') as f:
-            try:
+        try:
+            with open(filepath, 'r') as f:
                 return json.load(f)
-            except Exception as e:
-                # logger.exception(e)
-                # We just return that the key doesn't exist, as we can't load the key
-                raise KeyringNotWorking(e) from e
+        except json.JSONDecodeError as e:
+            self._del_item(key)
+            raise KeyError(key) from e
 
     def _del_item(self, key):
         filepath = self.__get_filename_for_key(key)
         if not os.path.exists(filepath):
             raise KeyError(key)
 
-        try:
-            os.unlink(filepath)
-        except Exception as e:
-            raise KeyringNotWorking(e)
+        os.unlink(filepath)
 
     def _set_item(self, key, value):
         try:
             with open(self.__get_filename_for_key(key), 'w') as f:
                 json.dump(value, f)
-        except Exception as e:
-            raise KeyringNotWorking(e)
+        except TypeError as e:
+            # The value we got is not serializable, thus a type error is thrown,
+            # we re-raise it as a ValueError because the value that was provided was in
+            # in un-expected format/type
+            raise ValueError(value) from e
+        except FileNotFoundError as e:
+            # if the path was not previously created for some reason,
+            # we get a FileNotFoundError
+            raise KeyringError(key) from e
 
     def __get_filename_for_key(self, key):
         return os.path.join(self.__path_base, f'keyring-{key}.json')

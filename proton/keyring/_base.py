@@ -39,7 +39,9 @@ class Keyring:
         :type key: str
         :raises TypeError: if key is not of valid type
         :raises ValueError: if key doesn't satisfy constraints
-        :raises KeyringNotWorking: if there's something broken with keyring
+        :raises KeyError: if key does not exist
+        :raises KeyringLocked: if keyring is locked when it shouldn't be
+        :raises KeyringError: if there's something broken with keyring
         """
         self._ensure_key_is_valid(key)
         return self._get_item(key)
@@ -51,7 +53,10 @@ class Keyring:
         :type key: str
         :raises TypeError: if key is not of valid type
         :raises ValueError: if key doesn't satisfy constraints
-        :raises KeyringNotWorking: if there's something broken with keyring"""
+        :raises KeyError: if key does not exist
+        :raises KeyringLocked: if keyring is locked when it shouldn't be
+        :raises KeyringError: if there's something broken with keyring
+        """
         self._ensure_key_is_valid(key)
         self._del_item(key)
 
@@ -64,7 +69,8 @@ class Keyring:
         :type value: dict or list
         :raises TypeError: if key or value is not of valid type
         :raises ValueError: if key or value doesn't satisfy constraints
-        :raises KeyringNotWorking: if there's something broken with keyring
+        :raises KeyringLocked: if keyring is locked when it shouldn't be
+        :raises KeyringError: if there's something broken with keyring
         """
         self._ensure_key_is_valid(key)
         self._ensure_value_is_valid(value)
