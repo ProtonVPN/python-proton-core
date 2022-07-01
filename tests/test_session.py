@@ -16,7 +16,7 @@ class TestSession(unittest.IsolatedAsyncioTestCase):
 
         s = Session()
         # This should succeed (non-authenticated route)
-        await s.async_api_request('/tests/ping') == {'Code': 1000}
+        assert await s.async_api_request('/tests/ping') == {'Code': 1000}
 
         # We need a session for this to work
         with self.assertRaises(ProtonAPIAuthenticationNeeded):
