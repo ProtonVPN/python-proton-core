@@ -5,6 +5,7 @@ from testdata import srp_instances, modulus_instances
 from testserver import TestServer
 from proton.session.srp.util import PM_VERSION
 from proton.session.api import Session
+from proton.session.exceptions import ProtonUnsupportedAuthVersionError
 
 
 class SRPTestCases:
@@ -13,11 +14,11 @@ class SRPTestCases:
             modulus = bytes.fromhex(srp_instances[0]['Modulus'])
             salt = base64.b64decode(srp_instances[0]['Salt'])
 
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ProtonUnsupportedAuthVersionError):
                 usr = self.user('pass', modulus)
                 salt, usr.compute_v(salt, 2)
 
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ProtonUnsupportedAuthVersionError):
                 usr = self.user('pass', modulus)
                 salt, usr.compute_v(salt, 5)
 

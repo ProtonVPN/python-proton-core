@@ -2,6 +2,9 @@ import base64
 import bcrypt
 import os
 
+from proton.session.exceptions import ProtonUnsupportedAuthVersionError
+
+
 PM_VERSION = 4
 
 SRP_LEN_BYTES = 256
@@ -26,7 +29,16 @@ def hash_password(hash_class, password, salt, modulus, version):
     if version == 4 or version == 3:
         return hash_password_3(hash_class, password, salt, modulus)
 
-    raise ValueError('Unsupported auth version')
+    # If the auth_version is lower then the
+    # supported value 3 (which were dropped in 2018). In such a case, the user
+    # needs to first login via web so that the auth version can be properly updated.
+    #
+    # This usually happens on older accounts that haven't been used in a while or
+    # account that rarely login via the web client.
+    raise ProtonUnsupportedAuthVersionError(
+        "Account auth_version is not supported. "
+        "Login via webclient for it to  be updated."
+    )
 
 
 def bytes_to_long(s):

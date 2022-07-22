@@ -9,9 +9,16 @@ class ProtonError(Exception):
         self.additional_context = additional_context
         super().__init__(self.message)
 
+
 class ProtonCryptoError(ProtonError):
     """Exception thrown when something is wrong on the crypto side. 
     In general this has to be handled as being fatal, as something is super-wrong."""
+
+
+class ProtonUnsupportedAuthVersionError(ProtonCryptoError):
+    """When the auth_version returned by the API is lower then what is currently supported.
+    This is usually fixed with a login via the webclient."""
+
 
 class ProtonAPIError(ProtonError):
     """Exception that is raised whenever the API call didn't return a 1000/1001 code.
