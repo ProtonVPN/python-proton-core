@@ -49,7 +49,7 @@ class TestAtlasEnvironment(unittest.IsolatedAsyncioTestCase):
         from proton.session import Session
         s = Session()
         with self.assertRaises(ProtonAPINotReachable):
-            await s.async_api_request('/tests/ping') == {'Code': 1000}
+            assert await s.async_api_request('/tests/ping') == {'Code': 1000}
 
     async def test_atlas_secret_missing(self):
         self._skip_if_no_internal_environments()

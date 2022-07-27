@@ -31,7 +31,7 @@ def test_del_item(_del_item_mock, _get_item_mock):
 def test_raise_exception_not_implemented_methods():
     keyring = Keyring()
     with pytest.raises(NotImplementedError):
-        keyring["test"]
+        _ = keyring["test"]
 
     with pytest.raises(NotImplementedError):
         keyring["test"] = ["test"]
@@ -43,13 +43,13 @@ def test_raise_exception_not_implemented_methods():
 @pytest.mark.parametrize("key", [1, [], {}, None, tuple()])
 def test_get_item_raises_exception_invalid_key_type(key):
     with pytest.raises(TypeError):
-        Keyring()[key]
+        _ = Keyring()[key]
 
 
 @pytest.mark.parametrize("key", ["!", "A", "ç", "+", "*", "ã", "\\", "?", "="])
 def test_get_item_raises_exception_invalid_key_value(key):
     with pytest.raises(ValueError):
-        Keyring()[key]
+        _ = Keyring()[key]
 
 
 @patch("proton.keyring._base.Keyring._get_item")

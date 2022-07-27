@@ -15,4 +15,4 @@ class TestAuto(unittest.IsolatedAsyncioTestCase):
 
         s = Session()
         s.transport_factory = AutoTransport
-        await s.async_api_request('/tests/ping') == {'Code': 1000}
+        assert await s.async_api_request('/tests/ping') == {'Code': 1000}

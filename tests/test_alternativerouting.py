@@ -15,7 +15,7 @@ class TestAlternativeRouting(unittest.IsolatedAsyncioTestCase):
 
         s = Session()
         s.transport_factory = AlternativeRoutingTransport
-        await s.async_api_request('/tests/ping') == {'Code': 1000}
+        assert await s.async_api_request('/tests/ping') == {'Code': 1000}
 
     async def test_alternative_routing_fails_on_atlas(self):
         from proton.session import Session
