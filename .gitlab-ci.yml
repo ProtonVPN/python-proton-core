@@ -25,7 +25,9 @@
   - python3-coverage xml -o cov.xml
   artifacts:
     reports:
-      cobertura: cov.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: cov.xml
       junit: report.xml
 
 bandit-sast:
