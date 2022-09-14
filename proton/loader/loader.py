@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import threading
 import warnings
 from collections import namedtuple
 from typing import Optional
@@ -61,6 +62,7 @@ class Loader(metaclass=Singleton):
         self.__metadata = metadata
         self.__known_types = {}
         self.__name_resolution_cache = {}
+        self.__lock = threading.Lock()
 
     def get(self, type_name: str, class_name: Optional[str] = None) -> type:
         """Get the implementation for type_name.
@@ -117,16 +119,18 @@ class Loader(metaclass=Singleton):
         """
 
         # If we don't have already loaded the entry points, just do so
-        if type_name not in self.__known_types:
-            entry_points = self.__metadata.entry_points().get(self._get_metadata_group_for_typename(type_name), ())
-            self.__known_types[type_name] = {}
-            for ep in entry_points:
-                try:
-                    self.__known_types[type_name][ep.name] = ep.load()
-                except AttributeError:
-                    warnings.warn(f"Loader: couldn't load {type_name}/{ep.name}, is it installed properly?", RuntimeWarning, stacklevel=2)
-                    continue
-                self.__name_resolution_cache[self.__known_types[type_name][ep.name]] = PluggableComponentName(type_name, ep.name)
+        with self.__lock:
+            # We use a lock here because a known type should only be available after it has been loaded.
+            if type_name not in self.__known_types:
+                entry_points = self.__metadata.entry_points().get(self._get_metadata_group_for_typename(type_name), ())
+                self.__known_types[type_name] = {}
+                for ep in entry_points:
+                    try:
+                        self.__known_types[type_name][ep.name] = ep.load()
+                    except AttributeError:
+                        warnings.warn(f"Loader: couldn't load {type_name}/{ep.name}, is it installed properly?", RuntimeWarning, stacklevel=2)
+                        continue
+                    self.__name_resolution_cache[self.__known_types[type_name][ep.name]] = PluggableComponentName(type_name, ep.name)
 
         # We do this at runtime, because we want to make sure we can change it after start.
         overrides = os.environ.get('PROTON_LOADER_OVERRIDES', '')
