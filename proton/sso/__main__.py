@@ -17,14 +17,20 @@ class ProtonSSOPresenterCredentialLogicState(enum.Enum):
 
 
 class ProtonSSOPresenter:
-    def __init__(self, view : BasicView):
+    def __init__(self, view : BasicView, appversion=None, user_agent=None):
         from .sso import ProtonSSO
 
         self._view = view
         self._session = None
         self._provided_account_name = None
         self._client_secret: str = None
-        self._sso = ProtonSSO()
+
+        kwargs_sso = {}
+        if appversion is not None:
+            kwargs_sso["appversion"] = appversion
+        if user_agent is not None:
+            kwargs_sso["user_agent"] = user_agent
+        self._sso = ProtonSSO(**kwargs_sso)
 
     def set_session(self, account_name = None):
         self._provided_account_name = account_name
@@ -113,6 +119,8 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser('proton-sso', description="Tool to manage user SSO sessions")
+    parser.add_argument('--appversion', help="App version")
+    parser.add_argument('--user-agent', help="User Agent")
     subparsers = parser.add_subparsers(help='action', dest='action', required=True)
 
     parser_login = subparsers.add_parser('login', help='Sign into an account')
@@ -140,7 +148,7 @@ def main():
     from proton.loader import Loader
 
     view = Loader.get('basicview')()
-    presenter = ProtonSSOPresenter(view)
+    presenter = ProtonSSOPresenter(view, appversion=args.appversion, user_agent=args.user_agent)
 
     # All action except list require an active account
     if args.action != 'list':
