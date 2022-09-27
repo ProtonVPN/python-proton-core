@@ -23,6 +23,7 @@ class ProtonSSOPresenter:
         self._view = view
         self._session = None
         self._provided_account_name = None
+        self._client_secret: str = None
         self._sso = ProtonSSO()
 
     def set_session(self, account_name = None):
@@ -34,6 +35,9 @@ class ProtonSSOPresenter:
 
     def set_environment(self, environment):
         self._session.environment = environment
+
+    def set_client_secret(self, client_secret):
+        self._client_secret = client_secret
 
     def CredentialsLogic(base_function):
         import functools
@@ -53,7 +57,7 @@ class ProtonSSOPresenter:
                             account_name = self._provided_account_name
                         if password is None:
                             break
-                        ret = self._session.authenticate(account_name, password)
+                        ret = self._session.authenticate(account_name, password, client_secret=self._client_secret),
                         if ret:
                             state = ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION
                         else:
@@ -115,6 +119,7 @@ def main():
     parser_login.add_argument('--unlock', action='store_true', help="Unlock and store user keys")
     parser_login.add_argument('--set-default', action='store_true', help="Set this account as default")
     parser_login.add_argument('--env', type=str, help="Environment to use")
+    parser_login.add_argument('--client-secret', type=str, help="Some API require a client secret")
     parser_login.add_argument('account', type=str, help="Proton account")
 
     parser_logout = subparsers.add_parser('logout', help='Sign out of an account')
@@ -144,6 +149,8 @@ def main():
     if args.action == 'login':
         if args.env is not None:
             presenter.set_environment(args.env)
+        if args.client_secret is not None:
+            presenter.set_client_secret(args.client_secret)
         presenter.login()
         if args.unlock:
             presenter.unlock()
