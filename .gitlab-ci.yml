@@ -1,4 +1,7 @@
+variables:
+  ALLOW_LINTING_FAILURE: "true"
+
 include:
  - project: 'ProtonVPN/Linux/new-client/integration/ci-libraries'
-   ref: master
+   ref: faacb55885f686314d4e9d8d9fe37dfb94cdeaa9  # develop on date of 26/12/2022
    file: 'develop-pipeline.yml'
