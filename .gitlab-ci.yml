@@ -3,5 +3,5 @@ variables:
 
 include:
  - project: 'ProtonVPN/Linux/new-client/integration/ci-libraries'
-   ref: faacb55885f686314d4e9d8d9fe37dfb94cdeaa9  # develop on date of 26/12/2022
+   ref: 3c6218697459297b07491fe69d2410fe3a142cb  # develop on date of 03/01/2023
    file: 'develop-pipeline.yml'
