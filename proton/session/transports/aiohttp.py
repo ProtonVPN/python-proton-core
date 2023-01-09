@@ -110,8 +110,8 @@ class AiohttpTransport(Transport):
                     raise ProtonAPIError(ret.status, dict(ret.headers), ret_json)
 
                 return ret_json
-            except aiohttp.ClientConnectorCertificateError as e:
-                raise ProtonAPINotReachable(f"SSL validation failed: {e}")
+            except aiohttp.ClientError as e:
+                raise ProtonAPINotReachable("Connection error.") from e
             except ProtonAPINotReachable:
                 raise
             except ProtonAPIError:
