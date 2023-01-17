@@ -78,8 +78,7 @@ class AutoTransport(Transport):
 
     async def async_api_request(
         self, endpoint,
-        jsondata=None, additional_headers=None,
-        method=None, params=None
+        jsondata=None, data=None, additional_headers=None, method=None, params=None
     ):
         tries_left = 3
         while tries_left > 0:
@@ -91,7 +90,7 @@ class AutoTransport(Transport):
                 raise ProtonAPINotReachable("No working transports found")
 
             try:
-                return await asyncio.wait_for(self._current_transport.async_api_request(endpoint, jsondata, additional_headers, method, params), self.TIMEOUT_TRANSPORT)
+                return await asyncio.wait_for(self._current_transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params), self.TIMEOUT_TRANSPORT)
             except asyncio.TimeoutError:
                 # Reset transport
                 self._current_transport = None

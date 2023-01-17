@@ -11,7 +11,7 @@ setup(
     url="https://github.com/ProtonMail/python-proton-core",
     install_requires=["requests", "bcrypt", "python-gnupg", "pyopenssl", "aiohttp", "importlib-metadata; python_version < '3.8'"],
     extras_require={
-        "test": ["pytest", "pyotp"]
+        "test": ["pytest", "pyotp", "pytest-cov", "flake8"]
     },
     entry_points={
         "console_scripts": [

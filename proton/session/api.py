@@ -98,7 +98,7 @@ class Session:
 
 
     async def async_api_request(self, endpoint,
-        jsondata=None, additional_headers=None,
+        jsondata=None, data=None, additional_headers=None,
         method=None, params=None, no_condition_check=False):
         """Do an API request.
 
@@ -108,6 +108,11 @@ class Session:
         :type endpoint: str
         :param jsondata: JSON serializable dict to send as request data
         :type jsondata: dict
+        :param data: data to be sent as either `multipart/form-data` or
+            `application/x-www-form-urlencoded`. `multipart/form-data` is used
+            when required, for example if data includes fields with a file-like
+            value (i.e. is an instance of io.IOBase).
+        :type data: FormData
         :param additional_headers: additional headers to send
         :type additional_headers: dict
         :param method: HTTP method (get|post|put|delete|patch)
@@ -129,7 +134,7 @@ class Session:
             attempts -= 1
             try:
                 refresh_revision_at_start = self.__refresh_revision
-                return await self.__async_api_request_internal(endpoint, jsondata, additional_headers, method, params, no_condition_check)
+                return await self.__async_api_request_internal(endpoint, jsondata, data, additional_headers, method, params, no_condition_check)
             except ProtonAPIError as e:
                 # We have a missing scope.
                 if e.http_code == 403:
@@ -672,7 +677,7 @@ class Session:
 
     async def __async_api_request_internal(
         self, endpoint,
-        jsondata=None, additional_headers=None,
+        jsondata=None, data=None, additional_headers=None,
         method=None, params=None, no_condition_check=False
     ):
         """Internal function to do an API request (without clever exception handling and retrying). 
@@ -684,7 +689,7 @@ class Session:
             raise RuntimeError("Could not instanciate a transport, are required dependencies installed?")
 
         await self._requests_wait(no_condition_check)
-        return await self.__transport.async_api_request(endpoint, jsondata, additional_headers, method, params)
+        return await self.__transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params)
 
     def _verify_modulus(self, armored_modulus) -> bytes:
         if self.__gnupg_for_modulus is None:

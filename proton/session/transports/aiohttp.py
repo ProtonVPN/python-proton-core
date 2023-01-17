@@ -1,9 +1,14 @@
+from __future__ import annotations
+
+from proton.session.formdata import FormData
+from .. import Session
 from ..exceptions import *
 from .base import Transport
 
 import json, base64, asyncio, aiohttp, hashlib
 from OpenSSL import crypto
 from typing import Iterable, Union, Optional
+
 
 # It's stupid, but we have to inherit from aiohttp.Fingerprint to trigger the correct logic in aiohttp
 class AiohttpCertkeyFingerprint(aiohttp.Fingerprint):
@@ -17,7 +22,6 @@ class AiohttpCertkeyFingerprint(aiohttp.Fingerprint):
                     self._fingerprints.append(fp)
         else:
             self._fingerprints = None
-
 
     def check(self, transport: asyncio.Transport) -> None:
         if not transport.get_extra_info("sslcontext"):
@@ -41,8 +45,9 @@ class AiohttpCertkeyFingerprint(aiohttp.Fingerprint):
 
 
 class AiohttpTransport(Transport):
-    def __init__(self, session):
+    def __init__(self, session: Session, form_data_transformer: FormDataTransformer = None):
         super().__init__(session)
+        self._form_data_transformer = form_data_transformer or FormDataTransformer()
 
     @classmethod
     def _get_priority(cls):
@@ -58,7 +63,7 @@ class AiohttpTransport(Transport):
 
     async def async_api_request(
         self, endpoint,
-        jsondata=None, additional_headers=None,
+        jsondata=None, data=None, additional_headers=None,
         method=None, params=None
     ):
         if self.tls_pinning_hashes is not None:
@@ -81,7 +86,7 @@ class AiohttpTransport(Transport):
         async with aiohttp.ClientSession(headers=headers) as s:
             # If we don't have an explicit method, default to get if there's no data, post otherwise
             if method is None:
-                if jsondata is None:
+                if not jsondata and not data:
                     fct = s.get
                 else:
                     fct = s.post
@@ -97,8 +102,13 @@ class AiohttpTransport(Transport):
                 if fct is None:
                     raise ValueError("Unknown method: {}".format(method))
 
+            form_data = self._form_data_transformer.to_aiohttp_form_data(data) if data else None
+
             try:
-                async with fct(self.http_base_url + endpoint, headers=additional_headers, json=jsondata, params=params, ssl = ssl_specs) as ret:
+                async with fct(
+                        self.http_base_url + endpoint, headers=additional_headers,
+                        json=jsondata, data=form_data, params=params, ssl=ssl_specs
+                ) as ret:
                     if ret.headers['content-type'] != 'application/json':
                         raise ProtonAPINotReachable("API returned non-json results")
                     try:
@@ -120,3 +130,17 @@ class AiohttpTransport(Transport):
                 raise ProtonAPIUnexpectedError(e)
 
 
+class FormDataTransformer:
+    @staticmethod
+    def to_aiohttp_form_data(form_data: FormData) -> aiohttp.FormData:
+        """
+        Converts proton.session.data.FormData into aiohttp.FormData.
+        https://docs.aiohttp.org/en/stable/client_reference.html#formdata
+        """
+        result = aiohttp.FormData()
+        for field in form_data.fields:
+            result.add_field(
+                name=field.name, value=field.value,
+                content_type=field.content_type, filename=field.filename
+            )
+        return result
