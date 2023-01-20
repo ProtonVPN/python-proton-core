@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.0.2
+%define version 0.1.0
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,8 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Fri Jan 20 2023 Josep Llaneras <josep.llaneras@proton.ch> 0.1.0
+- Support posting form-encoded data
 * Wed Sep 14 2022 Josep Llaneras <josep.llaneras@proton.ch> 0.0.2
 - Make Loader.get_all thread safe.
 * Wed Jun 1 2022 Xavier Piroux <xavier.piroux@proton.ch> 0.0.1
