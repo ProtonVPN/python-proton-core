@@ -1,3 +1,9 @@
+proton-core (0.1.1) unstable; urgency=medium
+
+  * Handle aiohttp timeout error
+
+ -- Josep Llaneras <josep.llaneras@proton.ch> Wed, 08 Feb 2023 16:29:58 +0100
+
 proton-core (0.1.0) unstable; urgency=medium
 
   * Support posting form-encoded data
