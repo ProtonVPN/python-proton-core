@@ -122,11 +122,13 @@ class AiohttpTransport(Transport):
                 return ret_json
             except aiohttp.ClientError as e:
                 raise ProtonAPINotReachable("Connection error.") from e
+            except asyncio.TimeoutError as e:
+                raise ProtonAPINotReachable("Timeout error.") from e
             except ProtonAPINotReachable:
                 raise
             except ProtonAPIError:
                 raise
-            except (Exception) as e:
+            except Exception as e:
                 raise ProtonAPIUnexpectedError(e)
 
 
