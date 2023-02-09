@@ -54,21 +54,6 @@ class ProtonSSO:
         self._global_adv_lock = open(os.path.join(self._adv_locks_path, f'proton-sso.lock'), 'w')
         self.__keyring_backend = None
 
-    def __normalize_account_name(self, account_name : str) -> str:
-        """Normalized account_name to avoid variability like caps variation.
-
-        :param account_name: account name to normalize
-        :type account_name: str
-        :raises ValueError: if the name is not valid
-        :return: Normalized account_name
-        :rtype: str
-        """
-        account_name = account_name.lower()
-        if not re.match(r'^[a-z][0-9a-z@\.-]*$', account_name):
-            raise ValueError("Invalid account name")
-        
-        return account_name
-
     def __encode_name(self, account_name) -> str:
         """Helper function to convert an account_name into a safe alphanumeric string.
 
@@ -201,8 +186,6 @@ class ProtonSSO:
         :type account_name: str
         :raises KeyError: if the account name is unknown
         """
-        account_name = self.__normalize_account_name(account_name)
-
         # We might be reordering accounts, so let's lock the full sso so we can't have concurrent actions here
         fcntl.flock(self._global_adv_lock, fcntl.LOCK_EX)
         try:
@@ -254,11 +237,10 @@ class ProtonSSO:
         :param current_data: current session data serialized as a dictionary
         :type current_data: dict
         """
-        if account_name is None:
+        if not account_name:
             # Don't do anything, we don't know the account yet!
             return
 
-        account_name = self.__normalize_account_name(account_name)
         self._adv_locks[account_name] = open(os.path.join(self._adv_locks_path, f'proton-sso-{self.__encode_name(account_name)}.lock'), 'w')
         # This is a blocking call. 
         # FIXME: this is Linux specific
@@ -277,11 +259,9 @@ class ProtonSSO:
         :param new_data: current session data serialized as a dictionary
         :type new_data: dict
         """
-        if account_name is None:
+        if not account_name:
             # Don't do anything, we don't know the account yet!
             return
-
-        account_name = self.__normalize_account_name(account_name)
 
         if new_data is not None and len(new_data) > 0 and new_data.get('AccountName', None) != account_name:
             raise ValueError("Sessions need to store a valid AccountName in order to store data.")
