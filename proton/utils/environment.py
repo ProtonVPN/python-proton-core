@@ -21,27 +21,33 @@ class ExecutionEnvironment(metaclass=Singleton):
 
     @property
     def path_config(self):
-        os.makedirs(self._path_config, mode=0o700, exist_ok=True)
+        self.generate_dirs(self._path_config)
         return self._path_config
 
     @property
     def path_cache(self):
-        os.makedirs(self._path_cache, mode=0o700, exist_ok=True)
+        self.generate_dirs(self._path_cache)
         return self._path_cache
 
     @property
     def path_logs(self):
-        os.makedirs(self._path_logs, mode=0o700, exist_ok=True)
+        self.generate_dirs(self._path_logs)
         return self._path_logs
 
     @property
     def path_runtime(self):
-        os.makedirs(self._path_runtime, mode=0o700, exist_ok=True)
+        self.generate_dirs(self._path_runtime)
         return self._path_runtime
 
     @property
     def systemd_unit(self):
         return self._path_systemd_unit
+
+    def generate_dirs(self, path):
+        if os.path.isdir(path):
+            return
+
+        os.makedirs(path, mode=0o700, exist_ok=True)
 
     def _setup_as_system_user(self):
         self._path_config = f'/etc/{self.PROTON_DIR_NAME}'
@@ -77,7 +83,6 @@ class ExecutionEnvironment(metaclass=Singleton):
 
         return config_home, cache_home, runtime_dir
 
-
 class ProductExecutionEnvironment(ExecutionEnvironment):
     """
     This class serves the purpose of helping in standardizing folder structure
@@ -96,19 +101,27 @@ class ProductExecutionEnvironment(ExecutionEnvironment):
 
     @property
     def path_config(self):
-        return os.path.join(super().path_config, self.PRODUCT)
+        path = os.path.join(super().path_config, self.PRODUCT)
+        self.generate_dirs(path)
+        return path
 
     @property
     def path_cache(self):
-        return os.path.join(super().path_cache, self.PRODUCT)
+        path = os.path.join(super().path_cache, self.PRODUCT)
+        self.generate_dirs(path)
+        return path
 
     @property
     def path_logs(self):
-        return os.path.join(super().path_logs, self.PRODUCT)
+        path = os.path.join(super().path_logs, self.PRODUCT)
+        self.generate_dirs(path)
+        return path
 
     @property
     def path_runtime(self):
-        return os.path.join(super().path_runtime, self.PRODUCT)
+        path = os.path.join(super().path_runtime, self.PRODUCT)
+        self.generate_dirs(path)
+        return path
 
 
 
