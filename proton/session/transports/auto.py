@@ -1,31 +1,37 @@
-from asyncio import transports
+from asyncio import transports, TimeoutError
+from typing import List
+from unittest.mock import Mock
+from urllib.parse import urlparse
+import json, base64, struct, time, asyncio, random, itertools
+
 from ..exceptions import *
 from .base import Transport
 from .aiohttp import AiohttpTransport
 from .alternativerouting import AlternativeRoutingTransport
-
-import json, base64, struct, time, asyncio, random, itertools
-
-from urllib.parse import urlparse
-
 from ..api import sync_wrapper
+
 
 class AutoTransport(Transport):
     # We assume that a given transport fails after that number of seconds
-    TIMEOUT_TRANSPORT = 15
+    TRANSPORT_TIMEOUT = 15
 
     @classmethod
     def _get_priority(cls):
         return 100
 
-    def __init__(self, session):
+    def __init__(self, session, transport_choices: List[Transport] = None, transport_timeout: int = None):
         super().__init__(session)
 
         self._current_transport = None
-        self._transport_choices = [
+        self._transport_choices = transport_choices or [
             (0, AiohttpTransport),
             (5, AlternativeRoutingTransport)
         ]
+        self._transport_timeout = transport_timeout or self.TRANSPORT_TIMEOUT
+
+    @property
+    def is_available(self) -> bool:
+        return self._current_transport is not None
 
     @property
     def transport_choices(self):
@@ -43,8 +49,18 @@ class AutoTransport(Transport):
 
     async def _ping_via_transport(self, timeout, transport):
         await asyncio.sleep(timeout)
-        result = await asyncio.wait_for(transport.async_api_request('/tests/ping'), self.TIMEOUT_TRANSPORT)
-        assert result == {"Code": 1000}, "For some reason, we didn't get {\"Code\":1000} ?!" # nosec (really just a sanity check, ping always return 1000 per spec)
+        ping_url = "/tests/ping"
+        try:
+            result = await asyncio.wait_for(transport.async_api_request(ping_url), self._transport_timeout)
+        except TimeoutError as error:
+            raise ProtonAPINotReachable(
+                f"{type(transport).__name__} transport not available: unable to reach {ping_url}"
+            ) from error
+        if result != {"Code": 1000}:
+            raise ProtonAPINotAvailable(
+                f"{type(transport).__name__} transport received unexpected response from {ping_url}:\n"
+                f"{result}"
+            )
         return transport
 
     async def find_available_transport(self):
@@ -55,7 +71,7 @@ class AutoTransport(Transport):
 
         results_ok = []
         results_fail = []
-        final_timestamp = time.time() + self.TIMEOUT_TRANSPORT
+        final_timestamp = time.time() + self._transport_timeout
         while len(pending) > 0 and len(results_ok) == 0:
             done, pending = await asyncio.wait(pending, timeout=max(0.1, final_timestamp - time.time()), return_when=asyncio.FIRST_COMPLETED)
             for task in done:
@@ -90,7 +106,7 @@ class AutoTransport(Transport):
                 raise ProtonAPINotReachable("No working transports found")
 
             try:
-                return await asyncio.wait_for(self._current_transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params), self.TIMEOUT_TRANSPORT)
+                return await asyncio.wait_for(self._current_transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params), self._transport_timeout)
             except asyncio.TimeoutError:
                 # Reset transport
                 self._current_transport = None
