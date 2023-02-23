@@ -65,7 +65,10 @@ class ProtonSSOPresenter:
                             break
                         ret = self._session.authenticate(account_name, password, client_secret=self._client_secret),
                         if ret:
-                            state = ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION
+                            if self._session.needs_twofa:
+                                state = ProtonSSOPresenterCredentialLogicState.NEEDS_TWOFA
+                            else:
+                                state = ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION
                         else:
                             self._view.display_error("Invalid credentials!")
                             # Remain in NEEDS_AUTHENTICATE state
