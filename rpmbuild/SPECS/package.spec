@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.3
+%define version 0.1.4
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Fri Mar 03 2023 Josep Llaneras <josep.llaneras@proton.ch> 0.1.4
+- Fix alternative routing crash during domain refresh
+
 * Mon Feb 13 2023 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.1.3
 - Recursively create product folders
 

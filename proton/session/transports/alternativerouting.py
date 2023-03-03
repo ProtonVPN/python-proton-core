@@ -1,4 +1,5 @@
-from typing import Awaitable
+from dataclasses import dataclass
+from typing import Awaitable, List
 import aiohttp
 from ..exceptions import *
 from .aiohttp import AiohttpTransport
@@ -8,6 +9,15 @@ import json, base64, struct, time, asyncio, random, itertools
 from urllib.parse import urlparse
 
 from ..api import sync_wrapper
+
+
+@dataclass
+class AlternativeRoutingDNSQueryAnswer:
+    """Contains the result of a successful DNS query to retrieve the
+    alternative routing server domain."""
+    expiration_time: float
+    domain: str
+
 
 class AlternativeRoutingTransport(AiohttpTransport):
     DNS_PROVIDERS = [
@@ -74,8 +84,9 @@ class AlternativeRoutingTransport(AiohttpTransport):
         
         return parsed_length, parts
 
-
-    async def _async_dns_query(self, domain, dns_server_ip, dns_server_path, delay=0):
+    async def _async_dns_query(
+            self, domain, dns_server_ip, dns_server_path, delay=0
+    ) -> List[AlternativeRoutingDNSQueryAnswer]:
         import aiohttp
 
         if delay > 0:
@@ -131,7 +142,10 @@ class AlternativeRoutingTransport(AiohttpTransport):
                 if record[0] != len(record) - 1:
                     raise ProtonAPINotReachable(f"DNS resolution failed using server {dot_url} (length of TXT record doesn't actual record data)")    
 
-            answers.append((time.time() + rec_ttl, record[1:].decode('ascii')))
+            answers.append(AlternativeRoutingDNSQueryAnswer(
+                expiration_time=time.time() + rec_ttl,
+                domain=record[1:].decode('ascii'))
+            )
 
         return answers
 
@@ -194,13 +208,16 @@ class AlternativeRoutingTransport(AiohttpTransport):
                 # No routes, and failed to get new ones
                 raise ProtonAPINotReachable("Couldn't resolve any alternative routing names")
 
-        names = [x[0] for x in results_ok]
+        domains = [x.domain for x in results_ok]
         # Filter names that are in our results (we don't want duplicates)
-        self._alternative_routes = [x for x in self._alternative_routes if x[0] not in names and x[1] >= time.time()]
+        self._alternative_routes = [
+            x for x in self._alternative_routes
+            if x.domain not in domains and x.expiration_time >= time.time()
+        ]
         # Add the results
         self._alternative_routes += results_ok
         # Sort them so we have the most recent on top
-        self._alternative_routes.sort(key=lambda x: x[0], reverse=True)
+        self._alternative_routes.sort(key=lambda x: x.expiration_time, reverse=True)
 
     @property
     def http_base_url(self):
@@ -209,7 +226,7 @@ class AlternativeRoutingTransport(AiohttpTransport):
 
         path = urlparse(super().http_base_url).path
         
-        return f'https://{self._alternative_routes[0][1]}{path}'
+        return f'https://{self._alternative_routes[0].domain}{path}'
 
     @property
     def tls_pinning_hashes(self):
@@ -220,7 +237,7 @@ class AlternativeRoutingTransport(AiohttpTransport):
         jsondata=None, data=None, additional_headers=None,
         method=None, params=None
     ):
-        if len(self._alternative_routes) == 0 or self._alternative_routes[0][0] < time.time():
+        if len(self._alternative_routes) == 0 or self._alternative_routes[0].ttl < time.time():
             await self._get_alternative_routes()
 
         return await super().async_api_request(endpoint, jsondata, data, additional_headers, method, params)
