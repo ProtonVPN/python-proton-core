@@ -237,7 +237,7 @@ class AlternativeRoutingTransport(AiohttpTransport):
         jsondata=None, data=None, additional_headers=None,
         method=None, params=None
     ):
-        if len(self._alternative_routes) == 0 or self._alternative_routes[0].ttl < time.time():
+        if len(self._alternative_routes) == 0 or self._alternative_routes[0].expiration_time < time.time():
             await self._get_alternative_routes()
 
         return await super().async_api_request(endpoint, jsondata, data, additional_headers, method, params)

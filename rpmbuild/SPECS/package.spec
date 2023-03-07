@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.5
+%define version 0.1.6
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Tue Mar 07 2023 Josep Llaneras <josep.llaneras@proton.ch> 0.1.6
+- Fix invalid attribute
+
 * Mon Mar 06 2023 Josep Llaneras <josep.llaneras@proton.ch> 0.1.5
 - Do not leak timeout errors when selecting transport
 
