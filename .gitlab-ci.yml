@@ -2,6 +2,6 @@ variables:
   ALLOW_LINTING_FAILURE: "true"
 
 include:
- - project: 'ProtonVPN/Linux/new-client/integration/ci-libraries'
+ - project: 'ProtonVPN/Linux/integration/ci-libraries'
    ref: develop
    file: 'develop-pipeline.yml'
