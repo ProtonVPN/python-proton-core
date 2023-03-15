@@ -4,7 +4,7 @@ from setuptools import setup, find_namespace_packages
 
 setup(
     name="proton-core",
-    version="0.1.6",
+    version="0.1.7",
     description="Proton Technologies API wrapper",
     author="Proton Technologies",
     author_email="contact@protonmail.com",
@@ -14,9 +14,6 @@ setup(
         "test": ["pytest", "pyotp", "pytest-cov", "flake8"]
     },
     entry_points={
-        "console_scripts": [
-            ['proton-sso=proton.sso:main'],
-        ],
         "proton_loader_keyring": [
             "json = proton.keyring.textfile:KeyringBackendJsonFiles"
         ],
