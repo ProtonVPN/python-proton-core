@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.7
+%define version 0.1.8
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Mon Mar 27 2023 Josep Llaneras <josep.llaneras@proton.ch> 0.1.8
+- Allow running proton.sso module
+
 * Tue Mar 07 2023 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.1.7
 - Hide SSO CLI
 

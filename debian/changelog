@@ -1,3 +1,9 @@
+proton-core (0.1.8) unstable; urgency=medium
+
+  * Allow running proton.sso module
+
+ -- Josep Llaneras <josep.llaneras@proton.ch>  Mon, 27 Mar 2023 14:58:52 +0200
+
 proton-core (0.1.7) unstable; urgency=medium
 
   * Hide SSO CLI

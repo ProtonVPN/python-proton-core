@@ -181,3 +181,7 @@ def main():
         presenter.set_default()
     else:
         raise NotImplementedError(f"Action {args.action} is not yet implemented")
+
+
+if __name__ == '__main__':
+    main()
