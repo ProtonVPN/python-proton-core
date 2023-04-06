@@ -60,14 +60,14 @@ class ProdEnvironment(Environment):
 
     @property
     def http_base_url(self):
-        return "https://api.protonvpn.ch"
+        return "https://vpn-api.proton.me"
 
     @property
     def tls_pinning_hashes(self):
         return set([
-            "drtmcR2kFkM8qJClsuWgUzxgBkePfRCkRpqUesyDmeE=",
-            "YRGlaY0jyJ4Jw2/4M8FIftwbDIQfh8Sdro96CeEel54=",
-            "AfMENBVvOS8MnISprtvyPsjKlPooqh8nMB/pvCrpJpw=",
+            "CT56BhOTmj5ZIPgb/xD5mH8rY3BLo/MlhP7oPyJUEDo=",
+            "35Dx28/uzN3LeltkCBQ8RHK0tlNSa2kCpCRGNp34Gxc=",
+            "qYIukVc63DEITct8sFT7ebIq5qsWmuscaIKeJx+5J5A=",
         ])
 
     @property
