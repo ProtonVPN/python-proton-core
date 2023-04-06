@@ -1,3 +1,9 @@
+proton-core (0.1.9) unstable; urgency=medium
+
+  * proton-sso: fixing 2fa
+
+ -- Xavier Piroux <xavier.piroux@proton.ch>  Thu, 06 Apr 2023 06:22:46 +0200
+
 proton-core (0.1.8) unstable; urgency=medium
 
   * Allow running proton.sso module
