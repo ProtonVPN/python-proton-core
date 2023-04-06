@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.10
+%define version 0.1.11
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,11 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+
+* Fri May 12 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.11
+- API URL : https://vpn-api.proton.me
+- fixed Alternative Routing : support IP addresses
+
 * Wed Apr 19 2023 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.1.10
 - Add license
 
