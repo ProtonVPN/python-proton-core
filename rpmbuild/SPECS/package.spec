@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.9
+%define version 0.1.10
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Wed Apr 19 2023 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.1.10
+- Add license
+
 * Thu Apr 06 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.9
 - proton-sso: fixing 2fa
 
