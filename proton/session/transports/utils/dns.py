@@ -43,9 +43,9 @@ class DNSParser:
             raise DNSResponseError(f"DNS response error code: {dns_rcode}")
 
         # Get counts
-        dns_qdcount, dns_ancount, dns_nscount, dns_arcount = cls.STRUCT_REPLY_COUNTS.unpack(reply_data[4:12])
-
-        offset = 12
+        offset = 4
+        dns_qdcount, dns_ancount, dns_nscount, dns_arcount = cls.STRUCT_REPLY_COUNTS.unpack_from(reply_data[offset:])
+        offset += cls.STRUCT_REPLY_COUNTS.size
         # skip questions
         for dns_qd_idx in range(dns_qdcount):
             length, data = cls._get_name(reply_data, offset)
@@ -59,11 +59,15 @@ class DNSParser:
             length, data = cls._get_name(reply_data, offset)
 
             offset += length
-            rec_type, rec_class, rec_ttl, rec_dlen = cls.STRUCT_REC_FORMAT.unpack_from(reply_data[offset:])
-            offset += 10
+            try:
+                rec_type, rec_class, rec_ttl, rec_dlen = cls.STRUCT_REC_FORMAT.unpack_from(reply_data[offset:])
+            except struct.error:
+                raise DNSParsingException(f"(truncated record headers)")
+            offset += cls.STRUCT_REC_FORMAT.size
 
             record = reply_data[offset:offset + rec_dlen]
-
+            if offset + rec_dlen > len(reply_data):
+                raise DNSParsingException(f"(truncated reply while parsing record)")
             offset += rec_dlen
 
             if rec_type == 0x10 and rec_class == 0x01:  # IN TXT
@@ -71,8 +75,13 @@ class DNSParser:
                     raise DNSParsingException(f"(length of TXT record doesn't match REC_DLEN)")
                 if record[0] != len(record) - 1:
                     raise DNSParsingException(f"(length of TXT record doesn't actual record data)")
-                answers.append((int(rec_ttl), record[1:].decode('ascii')))
+                try:
+                    answers.append((int(rec_ttl), record[1:].decode('ascii')))
+                except UnicodeDecodeError:
+                    raise DNSParsingException(f"(UnicodeDecodeError in TXT record)")
             elif rec_type == 0x01 and rec_class == 0x01:  # IN A
+                if len(record) != 4:
+                    raise DNSParsingException(f"(length of A record doesn't match)")
                 answers.append((int(rec_ttl), ipaddress.ip_address(record)))
             else:
                 logging.warning(f"record type currently not supported: {rec_type}... skip")

@@ -2,6 +2,7 @@ import base64
 import dataclasses
 import ipaddress
 import typing
+import pytest
 from proton.session.transports.utils.dns import DNSParser, DNSResponseError
 
 @dataclasses.dataclass
@@ -144,3 +145,19 @@ class TestDNSParser:
             dns_answers = DNSParser.parse(input_data.dns_reply)
             print(f"DNS answers : {dns_answers}")
             assert set(dns_answers) == set(input_data.expected_parsed_reply)
+
+    @pytest.mark.parametrize("description, invalid_input", [
+        ("Empty reply", b''),
+        ("Super small reply (1)", b'x'),
+        ("Super small reply (7)", b'\xfa\x83\x81\x80\x00\x01\x00'),
+        ("Unicode Decode error", b'\xfa\x83\x81\x80\x00\x01\x00\x02\x00\x00\x00\x00\x1bdMFYGSLTQOJXXI33OOZYG4LTDNA\tprotonpro\x03xyz\x00\x00\x10\x00\x01\xc0\x0c\x00\x10\x00\x01\x00\x00\x00x\x0032ec2\xcc3-127-37-78.eu-central-1.compute.amazonaws.com\xc0\x0c\x00\x10\x00\x01\x00\x00\x00x\x0054ec2-54-93-234-150.eu-central-1.compute.amazonaws.com'),
+        ("Wrong query reply", b'\xfa\x83\x81\x80\x00\x01\x00\x02\x00\x00\x00\x00\x1bdMFYGSLTQOJXXI33OOZYG4LTDNA\nprotonpro\x03xyz'),
+        ("Truncated query reply", b'\xfa\x83\x81\x80\x00\x01\x00\x02\x00\x00\x00\x00\x1bdMFYGSLTQOJXXI33OOZYG4LTDNA\tproto'),
+        ("Truncated TXT record value", b'\x00\x00\x81\x80\x00\x01\x00\x03\x00\x00\x00\x00\x1ddOZYG4LLBOBUS44DSN52G63RONVSQ\tprotonpro\x03xyz\x00\x00\x10\x00\x01\xc0\x0c\x00\x05\x00\x01\x00\x00\x00x\x00\x06\x03vpn\xc0*\xc0I\x00\x10\x00\x01\x00\x00\x00x\x00\x0e\r35.15'),
+        ("Truncated A record value", b'jW\x81\x80\x00\x01\x00\x01\x00\x03\x00\x03\x07vpn-api\x06proton\x02me\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x04\xb0\x00\x04\xb9\x9f\x9f'),
+        ("Truncated A record headers", b'jW\x81\x80\x00\x01\x00\x01\x00\x03\x00\x03\x07vpn-api\x06proton\x02me\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00'),
+    ])
+    def test_incorrect_records(self, description: str, invalid_input: bytes):
+        print(f"{description}")
+        with pytest.raises(DNSResponseError):
+            _ = DNSParser.parse(invalid_input)
