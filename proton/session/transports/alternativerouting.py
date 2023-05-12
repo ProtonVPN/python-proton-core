@@ -27,6 +27,7 @@ import json, base64, struct, time, asyncio, random, itertools
 from urllib.parse import urlparse
 
 from ..api import sync_wrapper
+from .utils.dns import DNSParser, DNSResponseError
 
 
 @dataclass
@@ -61,46 +62,9 @@ class AlternativeRoutingTransport(AiohttpTransport):
         super().__init__(session)
         self._alternative_routes = []
 
-    def _get_ar_domain_for(self, host):
-        host_part = b'd' + base64.b32encode(host.encode('ascii')).strip(b'=')
-
-        return bytes([len(host_part)]) + host_part + b'\x09protonpro\x03xyz\x00'
-
-    def _dns_parse_name(self, buffer, offset = 0):
-        # Length that we've parsed (for that specific record)
-        parsed_length = 0
-        # Have we jumped to somewhere else?
-        has_jumped = False
-        # Parts we've seen until now
-        parts = []
-        # While we're in the buffer, and we are not on a null byte (terminator)
-        while offset < len(buffer) and buffer[offset] != 0:
-            # Read the length of the part, in one byte
-            length = buffer[offset]
-            # If the length starts with two one bytes, then it's a pointer
-            if length & 0b1100_0000 == 0b1100_0000:
-                offset = ((buffer[offset] & 0b0011_1111) << 8) + buffer[offset + 1]
-                # Pointers have length 2
-                if not has_jumped:
-                    parsed_length += 2
-                # We're not any more in the current record, stop counting
-                has_jumped = True
-            else:
-                # Real entry
-                # Add the part
-                if offset + 1 + length > len(buffer):
-                    raise ProtonAPINotReachable(f"DNS resolution failed (non-parsable value)")
-                parts.append(buffer[offset + 1:offset + 1 + length])
-                # Add length, and the length byte
-                if not has_jumped:
-                    parsed_length += length + 1
-                offset += length + 1
-        
-        # This is for the 0-byte that terminates a name
-        if not has_jumped:
-            parsed_length += 1
-        
-        return parsed_length, parts
+    @classmethod
+    def _compute_ar_domain(cls, host):
+        return b'd' + base64.b32encode(host.encode('ascii')).strip(b'=') + b".protonpro.xyz"
 
     async def _async_dns_query(
             self, domain, dns_server_ip, dns_server_path, delay=0
@@ -110,59 +74,26 @@ class AlternativeRoutingTransport(AiohttpTransport):
         if delay > 0:
             await asyncio.sleep(delay)
 
-        ardomain = self._get_ar_domain_for(domain)
-        dns_request = b"\x00\x00\x01\x20\x00\x01\x00\x00\x00\x00\x00\x00" + ardomain + b"\x00\x10\x00\x01"
+        ardomain = self._compute_ar_domain(domain)
+        dns_request = DNSParser.build_query(ardomain, qtype=16, qclass=1)  # TXT IN
         dot_url = f'https://{dns_server_ip}{dns_server_path}'
 
         async with aiohttp.ClientSession() as session:
             async with session.post(dot_url, headers=[("Content-Type","application/dns-message")], data=dns_request) as r:
                 reply_data = await r.content.read()
 
-        if len(reply_data) < 12:
-            raise ProtonAPINotReachable(f"DNS resolution failed using server {dot_url} (truncated reply)")
-        
-        #Match reply code (0x0 = OK)
-        dns_rcode = reply_data[3] & 0xf
-        if dns_rcode == 0x3:
-            #NXDOMAIN, this is fatal
-            raise ProtonAPINotAvailable("No alternative routing exists for this environment (NXDOMAIN)")
-        elif dns_rcode != 0x0:
-            raise ProtonAPINotReachable(f"DNS resolution failed using server {dot_url} (RCODE={dns_rcode:x})")
+        try:
+            dns_answers = DNSParser.parse(reply_data)
+        except DNSResponseError as e:
+            raise ProtonAPINotReachable(str(e))
 
-        # Get counts
-        dns_qdcount, dns_ancount, dns_nscount, dns_arcount = self.STRUCT_REPLY_COUNTS.unpack(reply_data[4:12])
-
-        offset = 12
-        # Questions
-        for dns_qd_idx in range(dns_qdcount):
-            length, data = self._dns_parse_name(reply_data, offset)
-            #We ignore QTYPE/QCLASS
-            offset += length + 4
-
+        now = time.time()
         # Tuples (TTL, data)
         answers = []
-
-        # Answers
-        for dns_an_idx in range(dns_ancount):
-            length, data = self._dns_parse_name(reply_data, offset)
-            
-            offset += length
-            rec_type, rec_class, rec_ttl, rec_dlen = self.STRUCT_REC_FORMAT.unpack_from(reply_data[offset:])
-            offset += 10
-
-            record = reply_data[offset:offset + rec_dlen]
-
-            offset += rec_dlen
-
-            if rec_type == 0x10 and rec_class == 0x01: #IN TXT
-                if record[0] != rec_dlen - 1:
-                    raise ProtonAPINotReachable(f"DNS resolution failed using server {dot_url} (length of TXT record doesn't match REC_DLEN)")
-                if record[0] != len(record) - 1:
-                    raise ProtonAPINotReachable(f"DNS resolution failed using server {dot_url} (length of TXT record doesn't actual record data)")    
-
+        for rec_ttl, rec_val in dns_answers:
             answers.append(AlternativeRoutingDNSQueryAnswer(
-                expiration_time=time.time() + rec_ttl,
-                domain=record[1:].decode('ascii'))
+                expiration_time=now + rec_ttl,
+                domain=rec_val)
             )
 
         return answers
