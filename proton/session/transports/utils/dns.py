@@ -1,16 +1,15 @@
 import ipaddress
 import logging
 import struct
-import time
 import typing
 import random
 
 
-class DNSParsingException(Exception):
+class DNSResponseError(Exception):
     pass
 
 
-class DNSResponseError(Exception):
+class DNSParsingException(DNSResponseError):
     pass
 
 
@@ -20,40 +19,47 @@ class DNSParser:
     STRUCT_REPLY_COUNTS = struct.Struct('>HHHH')
     STRUCT_REC_FORMAT = struct.Struct('>HHIH')
 
-    # type defintiions
+    _MINIMUM_RECORD_LENGTH = 12  # => Transaction ID/Flags/#Questions/#Answers/#AuthorRRs/#AdditRRs
+
+    # type definitions
     IPvxAddress = typing.Union[ipaddress.IPv4Address, ipaddress.IPv6Address]
     ParsedData = typing.Union[str, IPvxAddress]
 
-    def parse(self, reply_data) -> typing.Optional[typing.List[typing.Tuple[int, ParsedData]]]:
-        if len(reply_data) < 12:
+    @classmethod
+    def parse(cls, reply_data) -> typing.Optional[typing.List[typing.Tuple[int, ParsedData]]]:
+        """ parse DNS reply and returns list of : TTL, address(IP or CNAME)"""
+
+        if len(reply_data) < cls._MINIMUM_RECORD_LENGTH:
             raise DNSParsingException(f"(truncated reply)")
 
         # Match reply code (0x0 = OK)
         dns_rcode = reply_data[3] & 0xf
 
         # ensure we have something to parse
-        if dns_rcode != 0x0:
+        if dns_rcode == 0x3:
+            #NXDOMAIN, this is fatal
+            raise DNSResponseError("No alternative routing exists for this environment (NXDOMAIN)")
+        elif dns_rcode != 0x0:
             raise DNSResponseError(f"DNS response error code: {dns_rcode}")
 
         # Get counts
-        dns_qdcount, dns_ancount, dns_nscount, dns_arcount = self.STRUCT_REPLY_COUNTS.unpack(reply_data[4:12])
+        dns_qdcount, dns_ancount, dns_nscount, dns_arcount = cls.STRUCT_REPLY_COUNTS.unpack(reply_data[4:12])
 
         offset = 12
         # skip questions
         for dns_qd_idx in range(dns_qdcount):
-            length, data = self._get_name(reply_data, offset)
+            length, data = cls._get_name(reply_data, offset)
             # We ignore QTYPE/QCLASS
             offset += length + 4
 
         # tuples (TTL, data)
         answers = []
-        now = int(time.time())
         # answers
         for dns_an_idx in range(dns_ancount):
-            length, data = self._get_name(reply_data, offset)
+            length, data = cls._get_name(reply_data, offset)
 
             offset += length
-            rec_type, rec_class, rec_ttl, rec_dlen = self.STRUCT_REC_FORMAT.unpack_from(reply_data[offset:])
+            rec_type, rec_class, rec_ttl, rec_dlen = cls.STRUCT_REC_FORMAT.unpack_from(reply_data[offset:])
             offset += 10
 
             record = reply_data[offset:offset + rec_dlen]
@@ -65,9 +71,9 @@ class DNSParser:
                     raise DNSParsingException(f"(length of TXT record doesn't match REC_DLEN)")
                 if record[0] != len(record) - 1:
                     raise DNSParsingException(f"(length of TXT record doesn't actual record data)")
-                answers.append((now + int(rec_ttl), record[1:].decode('ascii')))
+                answers.append((int(rec_ttl), record[1:].decode('ascii')))
             elif rec_type == 0x01 and rec_class == 0x01:  # IN A
-                answers.append((now + int(rec_ttl), ipaddress.ip_address(record)))
+                answers.append((int(rec_ttl), ipaddress.ip_address(record)))
             else:
                 logging.warning(f"record type currently not supported: {rec_type}... skip")
 
@@ -110,10 +116,9 @@ class DNSParser:
 
         return parsed_length, parts
 
-
-def build_dns_query(fqdn: typing.Union[str, bytes], qtype, qclass):
-    """Build a very simple dns request that is just a query with no AN, no RR, no AR, and a single question"""
-    def build_simple_dns_query(domain: bytes, qtype: int, qclass: int):
+    @classmethod
+    def _build_simple_query(cls, domain: bytes, qtype: int, qclass: int):
+        """internal utility to build the simplest DNS request we need"""
         id: bytes = struct.pack('!H', random.randint(0, 65535))
         qtype: bytes = struct.pack('!H', qtype)
         qclass: bytes = struct.pack('!H', qclass)
@@ -121,12 +126,16 @@ def build_dns_query(fqdn: typing.Union[str, bytes], qtype, qclass):
         # it's a query with a single question, no AN, no RR, no AR
         return id + b"\x01\x20\x00\x01\x00\x00\x00\x00\x00\x00" + domain + qtype + qclass
 
-    if type(fqdn) == str:
-        domain = b''.join([bytes([len(el)]) + el.encode('ascii') for el in fqdn.split('.')]) + b'\x00'
-    elif type(fqdn) == bytes:
-        domain = b''.join([bytes([len(el)]) + el for el in fqdn.split(b'.')]) + b'\x00'
-    else:
-        raise TypeError("fqdn can only be str or bytes")
+    @classmethod
+    def build_query(cls, fqdn: typing.Union[str, bytes], qtype, qclass):
+        """Build a very simple dns request that is just a query with no AN, no RR, no AR, and a single question"""
 
-    query = build_simple_dns_query(domain, qtype, qclass)
-    return query
+        if type(fqdn) == str:
+            domain = b''.join([bytes([len(el)]) + el.encode('ascii') for el in fqdn.split('.')]) + b'\x00'
+        elif type(fqdn) == bytes:
+            domain = b''.join([bytes([len(el)]) + el for el in fqdn.split(b'.')]) + b'\x00'
+        else:
+            raise TypeError("fqdn can only be str or bytes")
+
+        query = cls._build_simple_query(domain, qtype, qclass)
+        return query
