@@ -1,3 +1,10 @@
+proton-core (0.1.12) unstable; urgency=medium
+
+  * async_api_request() : raise Exception instead of return None in case of error
+  * AutoTransport.find_available_transport() can raise ProtonAPINotReachable
+
+ -- Xavier Piroux <xavier.piroux@proton.ch>  Thu, 13 Jul 2023 08:04:00 +0200
+
 proton-core (0.1.11) unstable; urgency=medium
 
   * API URL : https://vpn-api.proton.me

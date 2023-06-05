@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.11
+%define version 0.1.12
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+
+* Mon Jun 05 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.12
+- async_api_request() : raise Exception instead of return None in case of error
 
 * Fri May 12 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.11
 - API URL : https://vpn-api.proton.me
