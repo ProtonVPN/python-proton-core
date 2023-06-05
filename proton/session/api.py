@@ -148,12 +148,14 @@ class Session:
 
         # We might need to loop
         attempts = 3
+        stored_exception = None  # in case of too many attempts, raise instead of returning None
         while attempts > 0:
             attempts -= 1
             try:
                 refresh_revision_at_start = self.__refresh_revision
                 return await self.__async_api_request_internal(endpoint, jsondata, data, additional_headers, method, params, no_condition_check)
             except ProtonAPIError as e:
+                stored_exception = e
                 # We have a missing scope.
                 if e.http_code == 403:
                     # If we need a 2FA authentication, then ask for it by sending a specific exception.
@@ -185,6 +187,7 @@ class Session:
                     continue
                 #Something else, throw
                 raise
+        raise stored_exception  # if we have reached that point without returning any value, an exception should have been stored
 
     async def async_authenticate(self, username: str, password: str, client_secret: str = None, no_condition_check: bool = False, additional_headers=None) -> bool:
         """Authenticate against Proton API

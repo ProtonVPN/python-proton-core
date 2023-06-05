@@ -128,4 +128,5 @@ class AutoTransport(Transport):
             except asyncio.TimeoutError:
                 # Reset transport
                 self._current_transport = None
-            
+
+        raise ProtonAPINotReachable("Timeout accessing the API")  # we should not reach that point except in case of Timeout
