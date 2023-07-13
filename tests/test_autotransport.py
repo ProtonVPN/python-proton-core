@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
 from unittest.mock import Mock, AsyncMock
+import pytest
 import asyncio
 import os
 import time
@@ -25,6 +26,7 @@ import unittest
 from proton.session import Session
 from proton.session.transports.auto import AutoTransport
 from proton.session.transports.requests import RequestsTransport
+from proton.session.exceptions import ProtonAPINotReachable
 
 
 class TestAuto(unittest.IsolatedAsyncioTestCase):
@@ -58,7 +60,8 @@ class TestAuto(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(transport_timeout + 1)
         mock_transport.async_api_request.side_effect = force_transport_timeout
 
-        await auto_transport.find_available_transport()
+        with pytest.raises(ProtonAPINotReachable):
+            await auto_transport.find_available_transport()
 
         assert mock_transport.async_api_request.called_once_with('/tests/ping')
         assert not auto_transport.is_available
@@ -78,7 +81,8 @@ class TestAuto(unittest.IsolatedAsyncioTestCase):
             return "foobar"
         mock_transport.async_api_request.side_effect = force_unexpected_ping_response
 
-        await auto_transport.find_available_transport()
+        with pytest.raises(ProtonAPINotReachable):
+            await auto_transport.find_available_transport()
 
         assert mock_transport.async_api_request.called_once_with('/tests/ping')
         assert not auto_transport.is_available

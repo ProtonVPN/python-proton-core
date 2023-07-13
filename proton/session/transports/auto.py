@@ -103,12 +103,14 @@ class AutoTransport(Transport):
                     for task in pending:
                         task.cancel()
                     raise
-        
+
         for task in pending:
             task.cancel()
-        
-        if len(results_ok) > 0:
-            self._current_transport = results_ok[0]
+
+        if not results_ok:
+            raise ProtonAPINotReachable("No working transports found")
+
+        self._current_transport = results_ok[0]
 
     async def async_api_request(
         self, endpoint,
@@ -119,9 +121,6 @@ class AutoTransport(Transport):
             tries_left -= 1
             if self._current_transport is None:
                 await self.find_available_transport()
-            
-            if self._current_transport is None:
-                raise ProtonAPINotReachable("No working transports found")
 
             try:
                 return await asyncio.wait_for(self._current_transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params), self._transport_timeout)
