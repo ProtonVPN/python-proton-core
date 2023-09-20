@@ -169,7 +169,7 @@ class TestCTSRPClass(SRPTestCases.SRPTestBase):
             from proton.session.srp._ctsrp import User as CTUser
         except (ImportError, OSError):
             self.skipTest("Couldn't load C implementation of the SRP code, so skip this test.")
-            
+
         self.user = CTUser
 
 

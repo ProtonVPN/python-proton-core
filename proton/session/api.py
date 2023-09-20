@@ -306,7 +306,7 @@ class Session:
         finally:
             self._requests_unlock(no_condition_check)
 
-    async def async_refresh(self, only_when_refresh_revision_is=None, no_condition_check=False, additional_heades=None):
+    async def async_refresh(self, only_when_refresh_revision_is=None, no_condition_check=False, additional_headers=None):
         """Refresh tokens.
 
         Refresh AccessToken with a valid RefreshToken.
@@ -319,7 +319,7 @@ class Session:
         self._requests_lock(no_condition_check)
 
         #If we have the correct revision, and it doesn't match, then just exit
-        if only_when_refresh_revision_is is not None and self.__refresh_revision != self.__refresh_revision:
+        if only_when_refresh_revision_is is not None and only_when_refresh_revision_is != self.__refresh_revision:
             self._requests_unlock(no_condition_check)
             return True
 
@@ -337,7 +337,7 @@ class Session:
                         "GrantType": "refresh_token",
                         "RefreshToken": self.__RefreshToken,
                         "RedirectURI": "http://protonmail.ch"
-                    }, no_condition_check=True, additional_headers=additional_heades)
+                    }, no_condition_check=True, additional_headers=additional_headers)
                     self.__AccessToken = refresh_response["AccessToken"]
                     self.__RefreshToken = refresh_response["RefreshToken"]
                     self.__Scopes = refresh_response["Scopes"]

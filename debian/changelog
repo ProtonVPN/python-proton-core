@@ -1,3 +1,9 @@
+proton-core (0.1.15) unstable; urgency=medium
+
+  * fixing race condition in async_refresh()
+
+ -- Xavier Piroux <xavier.piroux@proton.ch>  Tue, 24 Oct 2023 11:29:39 +0200
+
 proton-core (0.1.14) unstable; urgency=medium
 
   * Fix crash on Python 3.12

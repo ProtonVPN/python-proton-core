@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.14
+%define version 0.1.15
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Wed Oct 24 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.15
+- fixing race condition in async_refresh()
+
 * Tue Oct 24 2023 Josep Llaneras <josep.llaneras@proton.ch> 0.1.14
 - Fix crash on Python 3.12
 
