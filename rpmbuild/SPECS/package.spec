@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.12
+%define version 0.1.13
 %define release 1
 
 Prefix: %{_prefix}
@@ -57,7 +57,11 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 
 %changelog
 
-* Mon Jun 05 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.12
+* Thu Oct 19 2023 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.1.13
+- Amend setup.py
+- Add minimum required python version
+
+* Thu Jul 13 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.12
 - async_api_request() : raise Exception instead of return None in case of error
 
 * Fri May 12 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.11
