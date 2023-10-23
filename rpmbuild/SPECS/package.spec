@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.13
+%define version 0.1.14
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,8 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Tue Oct 24 2023 Josep Llaneras <josep.llaneras@proton.ch> 0.1.14
+- Fix crash on Python 3.12
 
 * Thu Oct 19 2023 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.1.13
 - Amend setup.py

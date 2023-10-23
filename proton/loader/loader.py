@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
 from __future__ import annotations
+from importlib import metadata
 import os
 import threading
 import warnings
@@ -71,13 +72,6 @@ class Loader(metaclass=Singleton):
     __loader_prefix = 'proton_loader_'
 
     def __init__(self):
-        try:
-            from importlib import metadata
-        except ImportError:
-            # Python < 3.8
-            import importlib_metadata as metadata
-
-        self.__metadata = metadata
         self.__known_types = {}
         self.__name_resolution_cache = {}
         self.__lock = threading.Lock()
@@ -124,7 +118,25 @@ class Loader(metaclass=Singleton):
         :return: Return a list of the known type names
         :rtype: list[str]
         """
-        return [x[len(self.__loader_prefix):] for x in self.__metadata.entry_points().keys() if x.startswith(self.__loader_prefix)]
+        return [x[len(self.__loader_prefix):] for x in self._proton_entry_point_groups.keys()]
+
+    @property
+    def _proton_entry_point_groups(self):
+        metadata_entry_points = metadata.entry_points()
+        try:
+            # importlib.metadata.entry_points() uses the selectable interface in python >= 3.10
+            groups = metadata_entry_points.groups
+        except AttributeError:
+            # importlib.metadata.entry_points() uses the dict interface in python < 3.10
+            return {
+                k: v
+                for k, v in metadata_entry_points.items()
+                if k.startswith(self.__loader_prefix)
+            }
+        return {
+            group: metadata_entry_points.select(group=group)
+            for group in groups if group.startswith(self.__loader_prefix)
+        }
 
     def get_all(self, type_name: str) -> list[PluggableComponent]:
         """Get a list of all implementations for ``type_name``.
@@ -140,9 +152,13 @@ class Loader(metaclass=Singleton):
         with self.__lock:
             # We use a lock here because a known type should only be available after it has been loaded.
             if type_name not in self.__known_types:
-                entry_points = self.__metadata.entry_points().get(self._get_metadata_group_for_typename(type_name), ())
+                metadata_group_name = self._get_metadata_group_for_typename(type_name)
+                entry_points = self._proton_entry_point_groups.get(metadata_group_name, ())
                 self.__known_types[type_name] = {}
                 for ep in entry_points:
+                    if ep.name in self.__known_types[type_name]:
+                        del self.__known_types[type_name]
+                        raise RuntimeError(f"Loader error : found 2 modules with same name (that would create security issues)")
                     try:
                         self.__known_types[type_name][ep.name] = ep.load()
                     except AttributeError:

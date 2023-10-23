@@ -63,7 +63,7 @@ class TestAuto(unittest.IsolatedAsyncioTestCase):
         with pytest.raises(ProtonAPINotReachable):
             await auto_transport.find_available_transport()
 
-        assert mock_transport.async_api_request.called_once_with('/tests/ping')
+        mock_transport.async_api_request.assert_called_once_with('/tests/ping')
         assert not auto_transport.is_available
 
     async def test_auto_transport_is_not_available_when_all_transport_choices_receive_an_unexpected_ping_response(self):
@@ -84,5 +84,5 @@ class TestAuto(unittest.IsolatedAsyncioTestCase):
         with pytest.raises(ProtonAPINotReachable):
             await auto_transport.find_available_transport()
 
-        assert mock_transport.async_api_request.called_once_with('/tests/ping')
+        mock_transport.async_api_request.assert_called_once_with('/tests/ping')
         assert not auto_transport.is_available
