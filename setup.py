@@ -9,7 +9,7 @@ setup(
     author="Proton Technologies",
     author_email="contact@protonmail.com",
     url="https://github.com/ProtonMail/python-proton-core",
-    install_requires=["requests", "bcrypt", "python-gnupg", "pyopenssl", "aiohttp", "importlib-metadata; python_version < '3.8'"],
+    install_requires=["requests", "bcrypt", "python-gnupg", "pyopenssl", "aiohttp", "xdg", "importlib-metadata; python_version < '3.8'"],
     extras_require={
         "test": ["pytest", "pyotp", "pytest-cov", "flake8"]
     },
