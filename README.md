@@ -1,6 +1,6 @@
-# ProtonVPN core
+# Proton core
 
-The `proton-vpn-core` component contains core logic used by the other ProtonVPN components.
+The `proton-core` component contains core logic used by the other Proton components.
 
 ## Development
 
