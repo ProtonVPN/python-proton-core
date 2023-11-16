@@ -1,3 +1,9 @@
+proton-core (0.1.16) unstable; urgency=medium
+
+  * fixing (another) race condition in async_refresh()
+
+ -- Laurent Fasnacht <laurent.fasnacht@proton.ch>  Thu, 16 Nov 2023 13:05:53 +0100
+
 proton-core (0.1.15) unstable; urgency=medium
 
   * fixing race condition in async_refresh()

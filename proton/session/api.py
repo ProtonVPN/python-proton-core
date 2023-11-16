@@ -316,12 +316,15 @@ class Session:
         :return: True if refresh succeeded, False otherwise (doesn't throw an exception)
         :rtype: bool
         """
-        self._requests_lock(no_condition_check)
 
         #If we have the correct revision, and it doesn't match, then just exit
         if only_when_refresh_revision_is is not None and only_when_refresh_revision_is != self.__refresh_revision:
-            self._requests_unlock(no_condition_check)
+            # If we have the wrong revision, then this indicates that we have two refresh running in parallel.
+            # Thanksfully, we can simply wait for the other to complete and return successfully.
+            await self._requests_wait(no_condition_check)
             return True
+
+        self._requests_lock(no_condition_check)
 
         #Increment the refresh revision counter, so we don't refresh multiple times
         self.__refresh_revision += 1
