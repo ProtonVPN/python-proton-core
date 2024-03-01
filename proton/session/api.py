@@ -426,7 +426,57 @@ class Session:
 
     async def async_human_verif_provide_token(self, method, token):
         pass
-    
+
+
+    async def async_fork(self, child_client_id: str, payload: str=None, independent: int=0, user_code: int=None, no_condition_check=False) -> str:
+        """Try to fork the current session with parameters and return the fork selector if successful.
+
+        :param child_client_id: The clientID that the client creating the child session will use.
+        :type child_client_id: str
+        :param payload: Will be downloaded by the child client, and can contain encrypted sensitive information.
+        :type payload: str, optional
+        :param independent: set to 1 if the newly forked session has to be independent, else 0.
+        :type independent: int, optional
+        :param user_code: If provided, the selector will not be randomly chosen, but rather the one already returned will be used.
+        :type user_code: int, optional
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+
+        :return selector: Fork selector to be used by method `async_import_fork()`
+        :rtype: str
+        """
+        data = {'ChildClientID' : child_client_id, 'Independent': independent}
+        if payload is not None:
+            data['Payload'] = payload
+        if user_code is not None:
+            data['UserCode'] = user_code
+        ret = await self.async_api_request('/auth/v4/sessions/forks', data, method='POST', no_condition_check=no_condition_check)
+        return ret['Selector']
+
+
+    async def async_import_fork(self, selector: str, no_condition_check=False) -> str:
+        """Try to import the session fork specified by the selector.
+
+        :param selector: Obtained via a successful call to `async_fork()`
+        :type selector: str
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+
+        :return payload: The payload sent by the parent session when initiating the fork.
+        :rtype: str
+        """
+        self._requests_lock(no_condition_check)
+        try:
+            ret = await self.async_api_request(f"/auth/v4/sessions/forks/{selector}", method='GET', no_condition_check=True)
+            self.__UID = ret['UID']
+            self.__RefreshToken = ret['RefreshToken']
+            self.__AccessToken = ret['AccessToken']
+            self.__Scopes = ret['Scopes']
+            return ret['Payload']
+        finally:
+            self._requests_unlock(no_condition_check)
+        
+
 
     # Wrappers to provide non-asyncio API
     api_request = sync_wrapper(async_api_request)
@@ -437,6 +487,8 @@ class Session:
     lock = sync_wrapper(async_lock)
     human_verif_request_code = sync_wrapper(async_human_verif_request_code)
     human_verif_provide_token = sync_wrapper(async_human_verif_provide_token)
+    fork = sync_wrapper(async_fork)
+    import_fork = sync_wrapper(async_import_fork)
 
     def register_persistence_observer(self, observer: object):
         """Register an observer that will be notified of any persistent state change of the session
