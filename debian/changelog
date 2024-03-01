@@ -1,3 +1,9 @@
+proton-core (0.1.17) unstable; urgency=medium
+
+  * Session forking
+
+ -- Robin Delcros <robin.delcros@proton.ch>  Fri, 01 Mar 2024 14:21:24 +0100
+
 proton-core (0.1.16) unstable; urgency=medium
 
   * fixing (another) race condition in async_refresh()

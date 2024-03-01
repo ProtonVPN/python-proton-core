@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.16
+%define version 0.1.17
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Fri Mar 01 2024 Robin Delcros <robin.delcros@proton.ch> 0.1.17
+- Session forking
+
 * Thu Nov 16 2023 Laurent Fasnacht <laurent.fasnacht@proton.ch> 0.1.16
 - fixing (another) race condition in async_refresh()
 
