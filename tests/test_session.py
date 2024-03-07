@@ -175,6 +175,7 @@ class TestSessionUsingApi(unittest.IsolatedAsyncioTestCase):
         assert clear_payload == secret_payload
         r = await child_session.async_api_request("/auth/v4/sessions", method='GET')
         assert r['Code'] == 1000
+        assert len(r['Sessions']) > 0
 
     async def test_session_fork_not_ok(self):
         """
