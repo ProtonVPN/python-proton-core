@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.1.17
+%define version 0.1.18
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Tue Apr 30 2024 Josep Llaneras <josep.llaneras@proton.ch> 0.1.18
+- Fix invalid modulus error when logging in
+
 * Fri Mar 01 2024 Robin Delcros <robin.delcros@proton.ch> 0.1.17
 - Session forking
 

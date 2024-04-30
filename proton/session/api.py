@@ -17,9 +17,10 @@ You should have received a copy of the GNU General Public License
 along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
 from __future__ import annotations
+
+from pathlib import Path
 from typing import *
 
-from proton import session
 from .exceptions import ProtonCryptoError, ProtonAPIError, ProtonAPIAuthenticationNeeded, ProtonAPI2FANeeded, ProtonAPIMissingScopeError, ProtonAPIHumanVerificationNeeded
 from .srp import User as PmsrpUser
 from .environments import Environment
@@ -28,6 +29,8 @@ from ..loader import Loader
 import asyncio
 import base64
 import random
+
+from ..utils import ExecutionEnvironment
 
 SRP_MODULUS_KEY = """-----BEGIN PGP PUBLIC KEY BLOCK-----
 
@@ -770,8 +773,14 @@ class Session:
     def _verify_modulus(self, armored_modulus) -> bytes:
         if self.__gnupg_for_modulus is None:
             import gnupg
-            # Verify modulus
-            self.__gnupg_for_modulus = gnupg.GPG()
+            # The modulus key is imported in a separate GPG keyring (rather than on the user's
+            # default one) by modifying the gnupg home directory. The reason for doing this is
+            # that we received crash reports due to users messing up with their default GPG
+            # keyring permissions. In this case, python-gnupg fails silently when importing
+            # Proton's modulus key, which then causes the signature verification errors.
+            proton_gnupg_dir = Path(ExecutionEnvironment().path_cache) / "gnupg"
+            proton_gnupg_dir.mkdir(exist_ok=True)
+            self.__gnupg_for_modulus = gnupg.GPG(gnupghome=proton_gnupg_dir)
             self.__gnupg_for_modulus.import_keys(SRP_MODULUS_KEY)
 
         # gpg.decrypt verifies the signature too, and returns the parsed data.
