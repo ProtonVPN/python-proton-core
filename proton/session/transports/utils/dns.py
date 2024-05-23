@@ -18,6 +18,7 @@ along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
 import ipaddress
 import logging
+import re
 import struct
 import typing
 import random
@@ -38,6 +39,13 @@ class DNSParser:
     STRUCT_REC_FORMAT = struct.Struct('>HHIH')
 
     _MINIMUM_RECORD_LENGTH = 12  # => Transaction ID/Flags/#Questions/#Answers/#AuthorRRs/#AdditRRs
+
+    # Regular expression used in _is_valid_hostname.
+    # Each hostname segment (the strings in between the period characters) is only valid if:
+    #  - it has a minimum of 1 character and maximum of 63,
+    #  - it only contains alphanumeric characters or the hyphen but
+    #  - it does not start or end with a hyphen.
+    _VALID_HOSTNAME_SEGMENT = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
 
     # type definitions
     IPvxAddress = typing.Union[ipaddress.IPv4Address, ipaddress.IPv6Address]
@@ -94,13 +102,27 @@ class DNSParser:
                 if record[0] != len(record) - 1:
                     raise DNSParsingException(f"(length of TXT record doesn't actual record data)")
                 try:
-                    answers.append((int(rec_ttl), record[1:].decode('ascii')))
+                    hostname = record[1:].decode('ascii')
+
+                    # Only hostnames with a valid format are accepted in TXT records.
+                    # This is to avoid possible security exploits where the TXT record contains
+                    # a full URL (hostname + path), which e.g. could trigger SSO redirects.
+                    if not cls._is_valid_hostname(hostname):
+                        raise DNSParsingException(f"Invalid hostname in TXT record: {hostname}")
+
+                    answers.append((int(rec_ttl), hostname))
                 except UnicodeDecodeError:
                     raise DNSParsingException(f"(UnicodeDecodeError in TXT record)")
             elif rec_type == 0x01 and rec_class == 0x01:  # IN A
                 if len(record) != 4:
                     raise DNSParsingException(f"(length of A record doesn't match)")
-                answers.append((int(rec_ttl), ipaddress.ip_address(record)))
+
+                try:
+                    ipv4_address = ipaddress.IPv4Address(record)
+                except ValueError as exc:
+                    raise DNSParsingException(f"Invalid IP address in A record: {record}") from exc
+
+                answers.append((int(rec_ttl), ipv4_address))
             else:
                 logging.warning(f"record type currently not supported: {rec_type}... skip")
 
@@ -166,3 +188,15 @@ class DNSParser:
 
         query = cls._build_simple_query(domain, qtype, qclass)
         return query
+
+    @classmethod
+    def _is_valid_hostname(cls, hostname):
+        if len(hostname) > 255:
+            return False
+
+        # Strip exactly one dot from the right, if present.
+        if hostname[-1] == ".":
+            hostname = hostname[:-1]
+
+        # The hostname is valid if all its segments are valid.
+        return all(cls._VALID_HOSTNAME_SEGMENT.match(segment) for segment in hostname.split("."))

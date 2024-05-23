@@ -179,3 +179,18 @@ class TestDNSParser:
         print(f"{description}")
         with pytest.raises(DNSResponseError):
             _ = DNSParser.parse(invalid_input)
+
+    @pytest.mark.parametrize("hostname, valid", [
+        ("ec2-3-127-37-78.eu-central-1.compute.amazonaws.com", True),
+        ("hostnames.can.end.with.one.period.", True),
+        ("a"*257, False),  # hostnames have a 256-char limit
+        ("-hostname", False),  # hostnames cannot start with hyphen
+        ("hostname-", False),  # hostnames cannot end with hyphen
+        ("a"*64 + ".blah.com", False),  # hostname segments have a 63-char limit
+        ("blah..com", False),  # hostname segments should have a lest 1 char
+        ("special-chars!.com", False),  # hostname segments only allow alphanumeric chars and hyphens
+        ("vpn-api.proton.me/malicious/", False)  # hostname with potentially malicious path
+    ])
+    def test_valid_hostname_in_A_record(self, hostname, valid):
+        assert DNSParser._is_valid_hostname(hostname) is valid
+    

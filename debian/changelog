@@ -1,3 +1,9 @@
+proton-core (0.1.19) unstable; urgency=medium
+
+  * Sanitize DNS response
+
+ -- Josep Llaneras <josep.llaneras@proton.ch>  Thu, 23 May 2024 18:01:11 +0200
+
 proton-core (0.1.18) unstable; urgency=medium
 
   * Fix invalid modulus error when logging in
