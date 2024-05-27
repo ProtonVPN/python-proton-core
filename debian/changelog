@@ -1,3 +1,9 @@
+proton-core (0.2.0) unstable; urgency=medium
+
+  * Add dynamic module validation
+
+ -- Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch>  Mon, 27 May 2024 10:00:00 +0200
+
 proton-core (0.1.19) unstable; urgency=medium
 
   * Sanitize DNS response

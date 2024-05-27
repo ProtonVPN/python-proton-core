@@ -19,6 +19,7 @@ along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 from __future__ import annotations
 from importlib import metadata
 import os
+import inspect
 import threading
 import warnings
 from collections import namedtuple
@@ -28,6 +29,7 @@ from ..utils import Singleton
 
 PluggableComponent = namedtuple('PluggableComponent', ['priority', 'class_name', 'cls'])
 PluggableComponentName = namedtuple('PluggableComponentName', ['type_name', 'class_name'])
+
 
 class Loader(metaclass=Singleton):
     """This is the loader for pluggable components. These components are identified by a type name (string)
@@ -40,7 +42,7 @@ class Loader(metaclass=Singleton):
         from proton.loader import Loader
         # Note the parenthesis to instanciate an object, as Loader.get() returns a class.
         my_keyring = Loader.get('keyring')()
-    
+
     You can influence which component to use using the ``PROTON_LOADER_OVERRIDES`` environment variable. It's a comma separated list
     of ``type_name=class_name`` (to force ``class_name`` to be used) and ``type_name=-class_name`` (to exclude ``class_name`` from the options considered).
 
@@ -66,7 +68,7 @@ class Loader(metaclass=Singleton):
     If :meth:`_validate` is not defined, then it's assumed that it will always succeed.
 
     To display the list of valid values, you can use ``python3 -m proton.loader``.
-    
+
     """
 
     __loader_prefix = 'proton_loader_'
@@ -76,14 +78,23 @@ class Loader(metaclass=Singleton):
         self.__name_resolution_cache = {}
         self.__lock = threading.Lock()
 
-    def get(self, type_name: str, class_name: Optional[str] = None) -> type:
+    def get(
+        self, type_name: str,
+        class_name: Optional[str] = None,
+        validate_params: Optional[dict] = None
+    ) -> type:
         """Get the implementation for type_name.
 
         :param type_name: extension type
         :type type_name: str
         :param class_name: specific implementation to get, defaults to None (use preferred one)
         :type class_name: Optional[str], optional
-        :raises RuntimeError: if no valid implementation can be found, or if PROTON_LOADER_OVERRIDES is invalid.
+        :param validate_params: pass custom arguments to backends during `_validate`
+            Could be used in cases when the validity of a backend is to be dynamically
+            evaluated upon calling `get()`
+        :type validate_params: Optional[dict], optional
+        :raises RuntimeError: if no valid implementation can be found,
+            or if PROTON_LOADER_OVERRIDES is invalid.
         :return: the class implementing type_name. (careful: it's a class, not an object!)
         :rtype: class
         """
@@ -96,24 +107,29 @@ class Loader(metaclass=Singleton):
                     return entry.cls
                 else:
                     continue
-            
-            # Invalid priority, just continue (this will fail anyway because we have ordered the list in get_all, but for what it costs I prefer to go through the list)
+
+            # Invalid priority, just continue
+            # (this will fail anyway because we have ordered the list in get_all,
+            # but for what it costs I prefer to go through the list)
             if entry.priority is None:
                 continue
+
             # If we have a _validate class method, try to see if the object is indeed acceptable
             if hasattr(entry.cls, '_validate'):
-                if entry.cls._validate():
-                    return entry.cls
+                if inspect.signature(entry.cls._validate).parameters.get("validate_params"):  # noqa: E501  pylint: disable=protected-access
+                    entry_is_valid = entry.cls._validate(validate_params)  # noqa: E501 pylint: disable=protected-access
                 else:
-                    # If not, remove that from the acceptable types definitely (it's broken)
-                    self.__known_types[type_name] = dict([(k,v) for k, v in self.__known_types[type_name].items() if v != entry.cls])
+                    entry_is_valid = entry.cls._validate()  # pylint: disable=protected-access
+
+                if entry_is_valid:
+                    return entry.cls
             else:
                 return entry.cls
 
         raise RuntimeError(f"Loader: couldn't find an acceptable implementation for {type_name}.")
 
     @property
-    def type_names(self) -> list[str]: 
+    def type_names(self) -> list[str]:
         """
         :return: Return a list of the known type names
         :rtype: list[str]
@@ -133,6 +149,7 @@ class Loader(metaclass=Singleton):
                 for k, v in metadata_entry_points.items()
                 if k.startswith(self.__loader_prefix)
             }
+
         return {
             group: metadata_entry_points.select(group=group)
             for group in groups if group.startswith(self.__loader_prefix)
@@ -158,7 +175,7 @@ class Loader(metaclass=Singleton):
                 for ep in entry_points:
                     if ep.name in self.__known_types[type_name]:
                         del self.__known_types[type_name]
-                        raise RuntimeError(f"Loader error : found 2 modules with same name (that would create security issues)")
+                        raise RuntimeError("Loader error : found 2 modules with same name (that would create security issues)")
                     try:
                         self.__known_types[type_name][ep.name] = ep.load()
                     except AttributeError:
@@ -192,7 +209,7 @@ class Loader(metaclass=Singleton):
 
         # Sort the entries with priority, highest first
         acceptable_classes_with_prio.sort(reverse=True)
-        
+
         return acceptable_classes_with_prio + acceptable_classes_without_prio
 
     def get_name(self, cls: type) -> Optional[PluggableComponentName]:
@@ -210,7 +227,7 @@ class Loader(metaclass=Singleton):
         self.__known_types = {}
         self.__name_resolution_cache = {}
 
-    def set_all(self, type_name: str, implementations : dict[str, type]):
+    def set_all(self, type_name: str, implementations: dict[str, type]):
         """Set a defined set of implementation for a given ``type_name``.
 
         This method is probably useful only for testing.
