@@ -224,26 +224,32 @@ class ProtonSSO:
         finally:
             fcntl.flock(self._global_adv_lock, fcntl.LOCK_UN)
 
-    def _get_session_data(self, account_name : str) -> dict:
-        """Helper function to get data of a session, returns an empty dict if no data is present
-
-        :param account_name: normalized account name
-        :type account_name: str
-        :return: content of the session data, empty dict if it doesn't exist.
-        :rtype: dict
-        """
+    def _get_session_data(self, account_name):
         try:
-            data = self._keyring[self.__keyring_key_name(account_name)]
-        except KeyError:
-            data = {}
-
-        # This is an encapsulation violation (we're not supposed to know that the account name is stored in AccountName)
-        # It allows us nevertheless to validate that the session contains actual data, which is good to not break if a
-        # Session implementation is invalid.
-        if data.get('AccountName') != account_name:
-            data = {}
-
-        return data
+            data = self._keyring.get_keyring_data(account_name)
+            
+            # Check if data is a list
+            if isinstance(data, list):
+                # If it's a list, we assume the first item is the session data
+                if data and isinstance(data[0], dict):
+                    return data[0]
+                else:
+                    return {}  # Return an empty dict if the list is empty or first item is not a dict
+            
+            # If data is a dict, proceed as before
+            elif isinstance(data, dict):
+                if data.get('AccountName') != account_name:
+                    return {}
+                return data
+            
+            # If data is neither a list nor a dict, return an empty dict
+            else:
+                return {}
+        
+        except Exception as e:
+            # Log the error (replace with your logging mechanism)
+            print(f"Error in _get_session_data: {str(e)}")
+            return {}
 
 
     def _acquire_session_lock(self, account_name : str, current_data : dict) -> None:
@@ -321,8 +327,12 @@ class ProtonSSO:
             else:
                 # If this is a new entry, then append the index with the account (we leave the default as is)
                 if account_name not in keyring_index:
-                    new_keyring_index = keyring_index + [account_name]
-
+                    if isinstance(keyring_index, dict):
+                        new_keyring_index = {**keyring_index, account_name: len(keyring_index)}
+                    elif isinstance(keyring_index, list):
+                        new_keyring_index = keyring_index + [account_name]
+                    else:
+                        raise TypeError(f"Unexpected type for keyring_index: {type(keyring_index)}")
                 # Store the new data
                 keyring[self.__keyring_key_name(account_name)] = new_data
 
