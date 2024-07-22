@@ -226,7 +226,10 @@ class ProtonSSO:
 
     def _get_session_data(self, account_name):
         try:
-            data = self._keyring.get_keyring_data(account_name)
+            try:
+                data = self._keyring[self.__keyring_key_name(account_name)]
+            except KeyError:
+                data = {}
             
             # Check if data is a list
             if isinstance(data, list):
