@@ -225,6 +225,13 @@ class ProtonSSO:
             fcntl.flock(self._global_adv_lock, fcntl.LOCK_UN)
 
     def _get_session_data(self, account_name):
+        """Helper function to get data of a session, returns an empty dict if no data is present
+        
+        :param account_name: normalized account name
+        :type account_name: str
+        :return: content of the session data, empty dict if it doesn't exist.
+        :rtype: dict
+        """
         try:
             try:
                 data = self._keyring[self.__keyring_key_name(account_name)]
