@@ -124,7 +124,7 @@ class DNSParser:
 
                 answers.append((int(rec_ttl), ipv4_address))
             else:
-                logging.warning(f"record type currently not supported: {rec_type}... skip")
+                logging.debug(f"record type currently not supported: {rec_type}... skip")
 
         return answers
 
