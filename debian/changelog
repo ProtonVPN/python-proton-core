@@ -1,3 +1,9 @@
+proton-core (0.2.1) unstable; urgency=medium
+
+  * Make logs less verbose
+
+ -- Josep Llaneras <josep.llaneras@proton.ch>  Fri, 02 Aug 2024 11:37:12 +0200
+
 proton-core (0.2.0) unstable; urgency=medium
 
   * Add dynamic module validation

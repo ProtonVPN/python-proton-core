@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.2.0
+%define version 0.2.1
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Fri Aug 02 2024 Josep Llaneras <josep.llaneras@proton.ch> 0.2.1
+- Make logs less verbose
+
 * Mon May 27 2024 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.2.0
 - Add dynamic module validation
 
