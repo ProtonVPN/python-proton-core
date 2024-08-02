@@ -131,6 +131,7 @@ class AlternativeRoutingTransport(AiohttpTransport):
 
         results_ok = []
         results_fail = []
+        proton_api_not_available_errors = []
         final_timestamp = time.time() + self.TIMEOUT_DNS_REQUEST
         while len(pending) > 0 and len(results_ok) == 0:
             done, pending = await asyncio.wait(pending, timeout=max(0.1, final_timestamp - time.time()), return_when=asyncio.FIRST_COMPLETED)
@@ -139,15 +140,15 @@ class AlternativeRoutingTransport(AiohttpTransport):
                     results_ok += task.result()
                 except ProtonAPINotAvailable as e:
                     # That means that we were able to do a resolution, but it explicitly failed
-                    # Cancel tasks and raise exception
-                    for task in pending:
-                        task.cancel()
-                    raise
+                    proton_api_not_available_errors.append(e)
                 except Exception as e:
                     results_fail.append(e)
         
         for task in pending:
             task.cancel()
+
+        if proton_api_not_available_errors:
+            raise proton_api_not_available_errors[0]
 
         if len(results_ok) == 0:
             if len(self._alternative_routes) > 0:
