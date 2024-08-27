@@ -16,7 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
-from .base import TransportFactory
+from .base import TransportFactory, RawResponse
 from .aiohttp import AiohttpTransport
 from .auto import AutoTransport
 from .alternativerouting import AlternativeRoutingTransport

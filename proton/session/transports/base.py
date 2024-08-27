@@ -17,6 +17,16 @@ You should have received a copy of the GNU General Public License
 along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
 import weakref
+from dataclasses import dataclass
+from typing import Optional
+
+
+@dataclass
+class RawResponse:
+    status_code: int
+    headers: dict
+    json: Optional[dict]
+
 
 class Transport:
     def __init__(self, session):

@@ -1,3 +1,9 @@
+proton-core (0.3.0) unstable; urgency=medium
+
+  * Allow clients to support 'If-Modified-Since'
+
+ -- Luke Titley <luke.titley@proton.ch>  Tue, 27 Aug 2024 16:37:12 +0200
+
 proton-core (0.2.1) unstable; urgency=medium
 
   * Make logs less verbose

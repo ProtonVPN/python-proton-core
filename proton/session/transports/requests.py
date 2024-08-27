@@ -44,8 +44,11 @@ class RequestsTransport(Transport):
     async def async_api_request(
         self, endpoint,
         jsondata=None, data=None, additional_headers=None,
-        method=None, params=None
+        method=None, params=None, return_raw=False
     ):
+        if return_raw:
+            raise NotImplementedError("return_raw is not implemented")
+
         self._s.headers['x-pm-appversion'] = self._session.appversion
         self._s.headers['User-Agent'] = self._session.user_agent
 

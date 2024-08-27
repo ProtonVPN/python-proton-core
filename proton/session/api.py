@@ -120,7 +120,8 @@ class Session:
 
     async def async_api_request(self, endpoint,
         jsondata=None, data=None, additional_headers=None,
-        method=None, params=None, no_condition_check=False):
+        method=None, params=None, no_condition_check=False,
+        return_raw=False):
         """Do an API request.
 
         This call can return any of the exceptions defined in :mod:`proton.session.exceptions`.
@@ -156,7 +157,8 @@ class Session:
             attempts -= 1
             try:
                 refresh_revision_at_start = self.__refresh_revision
-                return await self.__async_api_request_internal(endpoint, jsondata, data, additional_headers, method, params, no_condition_check)
+                return await self.__async_api_request_internal(endpoint, jsondata, data, additional_headers, method, params, no_condition_check,
+                                                               return_raw=return_raw)
             except ProtonAPIError as e:
                 stored_exception = e
                 # We have a missing scope.
@@ -757,7 +759,8 @@ class Session:
     async def __async_api_request_internal(
         self, endpoint,
         jsondata=None, data=None, additional_headers=None,
-        method=None, params=None, no_condition_check=False
+        method=None, params=None, no_condition_check=False,
+        return_raw=False
     ):
         """Internal function to do an API request (without clever exception handling and retrying). 
         See :meth:`async_api_request` for the parameters specification."""
@@ -768,7 +771,8 @@ class Session:
             raise RuntimeError("Could not instanciate a transport, are required dependencies installed?")
 
         await self._requests_wait(no_condition_check)
-        return await self.__transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params)
+        return await self.__transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params,
+                                                        return_raw=return_raw)
 
     def _verify_modulus(self, armored_modulus) -> bytes:
         if self.__gnupg_for_modulus is None:

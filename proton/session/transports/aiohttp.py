@@ -21,12 +21,13 @@ from __future__ import annotations
 from proton.session.formdata import FormData
 from .. import Session
 from ..exceptions import *
-from .base import Transport
+from .base import Transport, RawResponse
 
 import json, base64, asyncio, aiohttp, hashlib
 from OpenSSL import crypto
 from typing import Iterable, Union, Optional
 
+NOT_MODIFIED = 304
 
 # It's stupid, but we have to inherit from aiohttp.Fingerprint to trigger the correct logic in aiohttp
 class AiohttpCertkeyFingerprint(aiohttp.Fingerprint):
@@ -82,8 +83,8 @@ class AiohttpTransport(Transport):
     async def async_api_request(
         self, endpoint,
         jsondata=None, data=None, additional_headers=None,
-        method=None, params=None
-    ):
+        method=None, params=None, return_raw=False
+    ) -> dict | RawResponse:
         if self.tls_pinning_hashes is not None:
             ssl_specs = AiohttpCertkeyFingerprint(self.tls_pinning_hashes)
         else:
@@ -127,15 +128,11 @@ class AiohttpTransport(Transport):
                         self.http_base_url + endpoint, headers=additional_headers,
                         json=jsondata, data=form_data, params=params, ssl=ssl_specs
                 ) as ret:
-                    if ret.headers['content-type'] != 'application/json':
-                        raise ProtonAPINotReachable("API returned non-json results")
-                    try:
-                        ret_json = await ret.json()
-                    except json.decoder.JSONDecodeError:
-                        raise ProtonAPIError(ret.status, dict(ret.headers), {})
+                    if return_raw:
+                        return RawResponse(ret.status, dict(ret.headers),
+                                           await self._parse_json(ret, allow_unmodified=True))
 
-                if ret_json['Code'] not in [1000, 1001]:
-                    raise ProtonAPIError(ret.status, dict(ret.headers), ret_json)
+                    ret_json = await self._parse_json(ret)
 
                 return ret_json
             except aiohttp.ClientError as e:
@@ -148,6 +145,22 @@ class AiohttpTransport(Transport):
                 raise
             except Exception as e:
                 raise ProtonAPIUnexpectedError(e)
+
+    async def _parse_json(self, ret, allow_unmodified=False):
+        if allow_unmodified and ret.status == NOT_MODIFIED:
+            return None
+
+        if ret.headers['content-type'] != 'application/json':
+            raise ProtonAPINotReachable("API returned non-json results")
+        try:
+            ret_json = await ret.json()
+        except json.decoder.JSONDecodeError:
+            raise ProtonAPIError(ret.status, dict(ret.headers), {})
+
+        if ret_json['Code'] not in [1000, 1001]:
+            raise ProtonAPIError(ret.status, dict(ret.headers), ret_json)
+
+        return ret_json
 
 
 class FormDataTransformer:

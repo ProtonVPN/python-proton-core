@@ -114,7 +114,8 @@ class AutoTransport(Transport):
 
     async def async_api_request(
         self, endpoint,
-        jsondata=None, data=None, additional_headers=None, method=None, params=None
+        jsondata=None, data=None, additional_headers=None, method=None, params=None,
+        return_raw=False
     ):
         tries_left = 3
         while tries_left > 0:
@@ -123,7 +124,7 @@ class AutoTransport(Transport):
                 await self.find_available_transport()
 
             try:
-                return await asyncio.wait_for(self._current_transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params), self._transport_timeout)
+                return await asyncio.wait_for(self._current_transport.async_api_request(endpoint, jsondata, data, additional_headers, method, params, return_raw=return_raw), self._transport_timeout)
             except asyncio.TimeoutError:
                 # Reset transport
                 self._current_transport = None
