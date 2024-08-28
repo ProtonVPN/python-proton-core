@@ -22,9 +22,11 @@ import requests
 
 from ..formdata import FormData
 from ..exceptions import *
-from .base import Transport
+from .base import Transport, RawResponse
 
 import json
+
+NOT_MODIFIED = 304
 
 class RequestsTransport(Transport):
     """ This is a simple transport based on the requests library, it's not advised to use in production """
@@ -40,15 +42,25 @@ class RequestsTransport(Transport):
         except ImportError:
             return None
 
+    def _parse_json(self, ret, allow_unmodified=False):
+        if allow_unmodified and ret.status_code == NOT_MODIFIED:
+            return None
+
+        try:
+            ret_json = ret.json()
+        except json.decoder.JSONDecodeError:
+            raise ProtonAPIError(ret.status_code, dict(ret.headers), {})
+
+        if ret_json['Code'] not in [1000, 1001]:
+            raise ProtonAPIError(ret.status_code, dict(ret.headers), ret_json)
+
+        return ret_json
 
     async def async_api_request(
         self, endpoint,
         jsondata=None, data=None, additional_headers=None,
         method=None, params=None, return_raw=False
     ):
-        if return_raw:
-            raise NotImplementedError("return_raw is not implemented")
-
         self._s.headers['x-pm-appversion'] = self._session.appversion
         self._s.headers['User-Agent'] = self._session.user_agent
 
@@ -90,13 +102,11 @@ class RequestsTransport(Transport):
         except (Exception, requests.exceptions.BaseHTTPError) as e:
             raise ProtonAPIUnexpectedError(e)
 
-        try:
-            ret_json = ret.json()
-        except json.decoder.JSONDecodeError:
-            raise ProtonAPIError(ret.status_code, dict(ret.headers), {})
+        if return_raw:
+            return RawResponse(ret.status_code, tuple(ret.headers.items()),
+                               self._parse_json(ret, allow_unmodified=True))
 
-        if ret_json['Code'] not in [1000, 1001]:
-            raise ProtonAPIError(ret.status_code, dict(ret.headers), ret_json)
+        ret_json = self._parse_json(ret)
 
         return ret_json
 

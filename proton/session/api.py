@@ -145,9 +145,13 @@ class Session:
         :type params: str, dict or iterable
         :param no_condition_check: Internal flag to disable locking, defaults to False
         :type no_condition_check: bool, optional
+        :param return_raw: If set to true, the function will return a :class:`RawResponse` object
+            instead of a dict, this class contains the header and status information along with the
+            json response.
+        :type return_raw: bool, optional
 
-        :return: Deserialized JSON reply
-        :rtype: dict
+        :return: Deserialized JSON reply or a RawResponse object if return_raw is True
+        :rtype: dict | RawResponse
         """
 
         # We might need to loop

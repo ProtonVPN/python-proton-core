@@ -18,17 +18,44 @@ along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
 import weakref
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 
 
 @dataclass
 class RawResponse:
+    """
+    A response that contains the status code and headers along with the body
+    as json. This gives more context to clients when receiving a response.
+    This type is returned where return_raw is set to True.
+
+    :param status_code: The status code of the response
+    :param headers: The headers in the response
+    :param json: The body the response parsed as json
+    """
     status_code: int
-    headers: dict
+    headers: tuple[tuple[str, Any]]
     json: Optional[dict]
+
+    def find_first_header(self, key, default=None):
+        """
+        Searches for the given key in the headers and returns the first value
+        if found, otherwise returns the default value.
+        """
+        for k, v in self.headers:
+            if key == k:
+                return v
+        return default
 
 
 class Transport:
+    """
+    The base class of all transports. This class should be subclassed to
+    implement the async_api_request method, which is the main method that
+    is used to make requests to the API.
+
+    A transport abstracts away the details of how requests are made to the API,
+    for example, it could be using requests, aiohttp, or any other library.
+    """
     def __init__(self, session):
         self.__session = weakref.ref(session)
     

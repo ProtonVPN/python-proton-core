@@ -24,6 +24,11 @@ from proton.session import Session
 from proton.session.formdata import FormData, FormField
 from proton.session.transports import AiohttpTransport
 from proton.session.transports.aiohttp import FormDataTransformer
+from proton.session.transports.base import RawResponse
+
+HTTP_STATUS_OK = 200
+HTTP_STATUS_NOT_MODIFIED = 304
+CODE_SUCCESS = 1000
 
 
 class TestAiohttpTransport(unittest.IsolatedAsyncioTestCase):
@@ -35,10 +40,10 @@ class TestAiohttpTransport(unittest.IsolatedAsyncioTestCase):
         aiohttp_transport = AiohttpTransport(session, form_data_transformer_mock)
 
         # Mock POST response.
-        post_mock.return_value.__aenter__.return_value.status = 200
+        post_mock.return_value.__aenter__.return_value.status = HTTP_STATUS_OK
         post_mock.return_value.__aenter__.return_value.headers = {"content-type": "application/json"}
         post_mock.return_value.__aenter__.return_value.json = AsyncMock(
-            return_value={"Code": 1000}
+            return_value={"Code": CODE_SUCCESS}
         )
 
         # Form data to be posted.
@@ -92,3 +97,55 @@ class TestFormDataTransformer(unittest.TestCase):
             "name": second_field_name, "value": second_field_value,
             "content_type": second_field_content_type, "filename": second_field_filename
         }
+
+
+class TestAiohttpTransportRawResult(unittest.IsolatedAsyncioTestCase):
+
+    def _setup(self, get_mock, status, headers, json):
+        # Mock the GET response
+        get_mock.return_value.__aenter__.return_value.status = status
+        get_mock.return_value.__aenter__.return_value.headers = headers
+        get_mock.return_value.__aenter__.return_value.json = AsyncMock(
+            return_value=json
+        )
+
+        session = Session()
+        aiohttp_transport = AiohttpTransport(session)
+
+        return session, aiohttp_transport
+
+    @patch("proton.session.transports.aiohttp.aiohttp.ClientSession.get")
+    async def test_async_api_request_get_raw(self, get_mock):
+        # Setup
+        session, aiohttp_transport = self._setup(get_mock,
+                                                 status=HTTP_STATUS_OK,
+                                                 headers={"content-type": "application/json"},
+                                                 json={"Code": CODE_SUCCESS})
+
+        # Test
+        response = await aiohttp_transport.async_api_request("/endpoint", return_raw=True)
+
+        # Checks
+        assert isinstance(response, RawResponse), "The response should be a RawResponse object."
+        assert response.status_code == HTTP_STATUS_OK
+        assert response.find_first_header("content-type") == "application/json"
+        assert response.json == {"Code": CODE_SUCCESS}
+        get_mock.assert_called_once()
+
+    @patch("proton.session.transports.aiohttp.aiohttp.ClientSession.get")
+    async def test_async_api_request_last_modified(self, get_mock):
+        # Setup
+        session, aiohttp_transport = self._setup(get_mock,
+                                                 status=HTTP_STATUS_NOT_MODIFIED,
+                                                 headers={},
+                                                 json=None)
+
+        # Test
+        response = await aiohttp_transport.async_api_request("/endpoint", return_raw=True)
+
+        # Checks
+        assert isinstance(response, RawResponse), "The response should be a RawResponse object."
+        assert response.status_code == HTTP_STATUS_NOT_MODIFIED
+        assert response.find_first_header("content-type", None) is None
+        assert response.json is None
+        get_mock.assert_called_once()

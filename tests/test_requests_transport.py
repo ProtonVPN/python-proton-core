@@ -25,6 +25,11 @@ import requests
 from proton.session import Session
 from proton.session.formdata import FormData, FormField
 from proton.session.transports.requests import RequestsTransport
+from proton.session.transports.base import RawResponse
+
+HTTP_STATUS_OK = 200
+HTTP_STATUS_NOT_MODIFIED = 304
+CODE_SUCCESS = 1000
 
 
 class TestRequestsTransport(unittest.IsolatedAsyncioTestCase):
@@ -63,3 +68,53 @@ class TestRequestsTransport(unittest.IsolatedAsyncioTestCase):
         assert posted_files == {
             "file": ("file.txt", file, "text/plain")
         }
+
+
+class TestRequestsTransportRawResult(unittest.IsolatedAsyncioTestCase):
+
+    def _setup(self, status, headers, json):
+        # Mock requests get call.
+        req_session = Mock(spec=requests.Session)
+        req_session.headers = headers
+        req_session.get.return_value.headers = headers
+        req_session.get.return_value.json.return_value = json
+        req_session.get.return_value.status_code = status
+
+        session = Session()
+
+        return session, RequestsTransport(session, req_session), req_session
+
+    async def test_async_api_request_get_raw(self):
+        session, requests_transport, req_session = self._setup(
+            HTTP_STATUS_OK,
+            {"content-type": "application/json"},
+            {"Code": CODE_SUCCESS}
+        )
+
+        # SUT.
+        response = await requests_transport.async_api_request("/endpoint", return_raw=True)
+
+        # Checks
+        assert isinstance(response, RawResponse), "The response should be a RawResponse object."
+        assert response.status_code == HTTP_STATUS_OK
+        assert response.find_first_header("content-type") == "application/json"
+        assert response.json == {"Code": CODE_SUCCESS}
+        req_session.get.assert_called_once()
+
+    async def test_async_api_request_last_modified(self):
+        # Setup
+        session, requests_transport, req_session = self._setup(
+            HTTP_STATUS_NOT_MODIFIED,
+            {},
+            None
+        )
+
+        # Test
+        response = await requests_transport.async_api_request("/endpoint", return_raw=True)
+
+        # Checks
+        assert isinstance(response, RawResponse), "The response should be a RawResponse object."
+        assert response.status_code == HTTP_STATUS_NOT_MODIFIED
+        assert response.find_first_header("content-type", None) is None
+        assert response.json is None
+        req_session.get.assert_called_once()

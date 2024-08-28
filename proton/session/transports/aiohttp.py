@@ -129,7 +129,7 @@ class AiohttpTransport(Transport):
                         json=jsondata, data=form_data, params=params, ssl=ssl_specs
                 ) as ret:
                     if return_raw:
-                        return RawResponse(ret.status, dict(ret.headers),
+                        return RawResponse(ret.status, tuple(ret.headers.items()),
                                            await self._parse_json(ret, allow_unmodified=True))
 
                     ret_json = await self._parse_json(ret)

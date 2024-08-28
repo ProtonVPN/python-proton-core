@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.3.0
+%define version 0.3.1
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Tue Aug 30 2024 Luke Titley <luke.titley@proton.ch> 0.3.1
+- Minor changes following feedback/review
+
 * Tue Aug 27 2024 Luke Titley <luke.titley@proton.ch> 0.3.0
 - Allow clients to support 'If-Modified-Since'
 
