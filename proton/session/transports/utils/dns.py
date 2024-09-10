@@ -45,7 +45,7 @@ class DNSParser:
     #  - it has a minimum of 1 character and maximum of 63,
     #  - it only contains alphanumeric characters or the hyphen but
     #  - it does not start or end with a hyphen.
-    _VALID_HOSTNAME_SEGMENT = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
+    _VALID_HOSTNAME_SEGMENT = re.compile(r"(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
 
     # type definitions
     IPvxAddress = typing.Union[ipaddress.IPv4Address, ipaddress.IPv6Address]
