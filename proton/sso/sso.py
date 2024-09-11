@@ -50,13 +50,15 @@ class ProtonSSO:
     Session objects are immune to what happens in another process (i.e. imagine if one process terminates the session.), but at least makes it consistent.
     In the future, it would be nice to use an IPC mechanism to make sure other processes are aware of the state change.
     """
-    def __init__(self, appversion : str = "Other", user_agent: str ="None"):
+    def __init__(self, appversion : str = "Other", user_agent: str ="None", keyring_backend_name=None):
         """Create a SSO instance
 
         :param appversion: Application version (see :class:`proton.session.Session`), defaults to "Other"
         :type appversion: str, optional
         :param user_agent: User agent version (see :class:`proton.session.Session`), defaults to "None"
         :type user_agent: str, optional
+        :param keyring_backend_name: Name of Keyring backend to load (see :class:`proton.keyring.Keyring`), defaults to None
+        :type keyring_backend_name: str, optional
         """
         # Store appversion and user_agent for subsequent sessions
         self._appversion = appversion
@@ -71,6 +73,7 @@ class ProtonSSO:
         # This is a global lock, we use it when we modify the indexes
         self._global_adv_lock = open(os.path.join(self._adv_locks_path, f'proton-sso.lock'), 'w')
         self.__keyring_backend = None
+        self.__keyring_backend_name = keyring_backend_name
 
     def __encode_name(self, account_name) -> str:
         """Helper function to convert an account_name into a safe alphanumeric string.
@@ -108,8 +111,8 @@ class ProtonSSO:
         :rtype: Keyring
         """
         if self.__keyring_backend is None:
-            self.__keyring_backend = Keyring.get_from_factory()
-        elif not isinstance(self.__keyring_backend, type(Keyring.get_from_factory())):
+            self.__keyring_backend = Keyring.get_from_factory(self.__keyring_backend_name)
+        elif not isinstance(self.__keyring_backend, type(Keyring.get_from_factory(self.__keyring_backend_name))):
             # If the current keyring does not match the keyring we were using previously,
             # then something must've changed in the env and we should raise an exception.
             raise RuntimeError("Keyring backends do not match")
