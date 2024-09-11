@@ -1,6 +1,7 @@
 proton-core (0.3.2) unstable; urgency=medium
 
   * ProtonSSO : allow selecting the keyring backend (unspecified: load default keyring)
+  * External contribution from 'wesinator' : fix hostname segment regex
 
  -- Xavier Piroux <xavier.piroux@proton.ch>  Wed, 11 Sep 2024 12:53:42 +0200
 

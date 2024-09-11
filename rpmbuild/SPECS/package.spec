@@ -58,6 +58,7 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %changelog
 * Wed Sep 11 2024 Xavier Piroux <xavier.piroux@proton.ch> 0.3.2
 - ProtonSSO : allow selecting the keyring backend (unspecified: load default keyring)
+- External contribution from 'wesinator' : fix hostname segment regex
 
 * Tue Aug 30 2024 Luke Titley <luke.titley@proton.ch> 0.3.1
 - Minor changes following feedback/review
