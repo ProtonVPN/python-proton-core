@@ -18,7 +18,7 @@ along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
 import weakref
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, Tuple
 
 
 @dataclass
@@ -33,7 +33,7 @@ class RawResponse:
     :param json: The body the response parsed as json
     """
     status_code: int
-    headers: tuple[tuple[str, Any]]
+    headers: Tuple[Tuple[str, Any]]
     json: Optional[dict]
 
     def find_first_header(self, key, default=None):

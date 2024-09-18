@@ -4,7 +4,7 @@ from setuptools import setup, find_namespace_packages
 
 setup(
     name="proton-core",
-    version="0.3.2",
+    version="0.3.3",
     description="Proton Technologies API wrapper",
     author="Proton Technologies",
     author_email="contact@protonmail.com",

@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.3.2
+%define version 0.3.3
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Wed Sep 18 2024 Josep Llaneras <josep.llaneras@proton.ch> 0.3.3
+- Amend type hinting
+
 * Wed Sep 11 2024 Xavier Piroux <xavier.piroux@proton.ch> 0.3.2
 - ProtonSSO : allow selecting the keyring backend (unspecified: load default keyring)
 - External contribution from 'wesinator' : fix hostname segment regex

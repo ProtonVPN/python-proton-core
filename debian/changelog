@@ -1,3 +1,9 @@
+proton-core (0.3.3) unstable; urgency=medium
+
+  * Amend type hinting
+
+ -- Josep Llaneras <josep.llaneras@proton.ch>  Wed, 18 Sep 2024 09:53:48 +0200
+
 proton-core (0.3.2) unstable; urgency=medium
 
   * ProtonSSO : allow selecting the keyring backend (unspecified: load default keyring)
