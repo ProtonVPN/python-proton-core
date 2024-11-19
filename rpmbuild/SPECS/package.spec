@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.3.3
+%define version 0.4.0
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Tue Nov 19 2024 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.4.0
+- Require python >= 3.9 to allow libraries using newer language features
+
 * Wed Sep 18 2024 Josep Llaneras <josep.llaneras@proton.ch> 0.3.3
 - Amend type hinting
 
@@ -63,7 +66,7 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 - ProtonSSO : allow selecting the keyring backend (unspecified: load default keyring)
 - External contribution from 'wesinator' : fix hostname segment regex
 
-* Tue Aug 30 2024 Luke Titley <luke.titley@proton.ch> 0.3.1
+* Fri Aug 30 2024 Luke Titley <luke.titley@proton.ch> 0.3.1
 - Minor changes following feedback/review
 
 * Tue Aug 27 2024 Luke Titley <luke.titley@proton.ch> 0.3.0
@@ -87,7 +90,7 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 * Thu Nov 16 2023 Laurent Fasnacht <laurent.fasnacht@proton.ch> 0.1.16
 - fixing (another) race condition in async_refresh()
 
-* Wed Oct 24 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.15
+* Tue Oct 24 2023 Xavier Piroux <xavier.piroux@proton.ch> 0.1.15
 - fixing race condition in async_refresh()
 
 * Tue Oct 24 2023 Josep Llaneras <josep.llaneras@proton.ch> 0.1.14
