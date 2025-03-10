@@ -2,6 +2,9 @@ variables:
   ALLOW_LINTING_FAILURE: "true"
 
 include:
- - project: 'ProtonVPN/Linux/integration/ci-libraries'
-   ref: develop
-   file: 'develop-pipeline.yml'
+  - component: $CI_SERVER_FQDN/proton/devops/cicd-components/kits/devsecops/python@0.0
+    inputs:
+      stage: scan
+  - project: 'ProtonVPN/Linux/integration/ci-libraries'
+    ref: develop
+    file: 'develop-pipeline.yml'
