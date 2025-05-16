@@ -42,6 +42,20 @@ class RequestsTransport(Transport):
         except ImportError:
             return None
 
+    def _build_raw(self, ret):
+        response = RawResponse(ret.status_code,
+                               tuple(ret.headers.items()), None, None)
+
+        if ret.status_code == NOT_MODIFIED:
+            return response
+
+        response.data = ret.content
+
+        if ret.headers['content-type'] != 'application/octet-stream':
+            response.json = self._parse_json(ret, allow_unmodified=True)
+
+        return response
+
     def _parse_json(self, ret, allow_unmodified=False):
         if allow_unmodified and ret.status_code == NOT_MODIFIED:
             return None
@@ -103,8 +117,7 @@ class RequestsTransport(Transport):
             raise ProtonAPIUnexpectedError(e)
 
         if return_raw:
-            return RawResponse(ret.status_code, tuple(ret.headers.items()),
-                               self._parse_json(ret, allow_unmodified=True))
+            return self._build_raw(ret)
 
         ret_json = self._parse_json(ret)
 

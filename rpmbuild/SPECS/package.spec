@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Wed Jun 4 2025 Luke Titley <luke.titley@proton.ch> 0.5.0
+- Provide access to the binary response when requesting with 'return_raw'.
+
 * Tue Nov 19 2024 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.4.0
 - Require python >= 3.9 to allow libraries using newer language features
 

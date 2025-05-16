@@ -1,3 +1,9 @@
+proton-core (0.5.0) unstable; urgency=medium
+
+  * Provide access to the binary response when requesting with 'return_raw'.
+
+ -- Luke Titley <luke.titley@proton.ch>  Wed, 4 Jun 2025 15:00:00 +0000
+
 proton-core (0.4.0) unstable; urgency=medium
 
   * Require python >= 3.9 to allow libraries using newer language features

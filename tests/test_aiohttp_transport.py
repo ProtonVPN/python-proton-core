@@ -19,6 +19,7 @@ along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 import unittest
 from io import StringIO
 from unittest.mock import patch, AsyncMock, Mock
+import json
 
 from proton.session import Session
 from proton.session.formdata import FormData, FormField
@@ -101,13 +102,17 @@ class TestFormDataTransformer(unittest.TestCase):
 
 class TestAiohttpTransportRawResult(unittest.IsolatedAsyncioTestCase):
 
-    def _setup(self, get_mock, status, headers, json):
+    def _setup(self, get_mock, status, headers, json_value):
         # Mock the GET response
         get_mock.return_value.__aenter__.return_value.status = status
         get_mock.return_value.__aenter__.return_value.headers = headers
-        get_mock.return_value.__aenter__.return_value.json = AsyncMock(
-            return_value=json
-        )
+        get_mock.return_value.__aenter__.return_value.json.return_value =\
+            json_value
+
+        if json_value is not None:
+            byte_value = json.dumps(json_value).encode('utf-8')
+            get_mock.return_value.__aenter__.return_value.read.return_value =\
+                byte_value
 
         session = Session()
         aiohttp_transport = AiohttpTransport(session)
@@ -120,7 +125,7 @@ class TestAiohttpTransportRawResult(unittest.IsolatedAsyncioTestCase):
         session, aiohttp_transport = self._setup(get_mock,
                                                  status=HTTP_STATUS_OK,
                                                  headers={"content-type": "application/json"},
-                                                 json={"Code": CODE_SUCCESS})
+                                                 json_value={"Code": CODE_SUCCESS})
 
         # Test
         response = await aiohttp_transport.async_api_request("/endpoint", return_raw=True)
@@ -129,6 +134,7 @@ class TestAiohttpTransportRawResult(unittest.IsolatedAsyncioTestCase):
         assert isinstance(response, RawResponse), "The response should be a RawResponse object."
         assert response.status_code == HTTP_STATUS_OK
         assert response.find_first_header("content-type") == "application/json"
+        assert response.data == b'{"Code": 1000}', "The response data should not be None."
         assert response.json == {"Code": CODE_SUCCESS}
         get_mock.assert_called_once()
 
@@ -138,7 +144,7 @@ class TestAiohttpTransportRawResult(unittest.IsolatedAsyncioTestCase):
         session, aiohttp_transport = self._setup(get_mock,
                                                  status=HTTP_STATUS_NOT_MODIFIED,
                                                  headers={},
-                                                 json=None)
+                                                 json_value=None)
 
         # Test
         response = await aiohttp_transport.async_api_request("/endpoint", return_raw=True)

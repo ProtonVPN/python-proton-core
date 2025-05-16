@@ -129,8 +129,7 @@ class AiohttpTransport(Transport):
                         json=jsondata, data=form_data, params=params, ssl=ssl_specs
                 ) as ret:
                     if return_raw:
-                        return RawResponse(ret.status, tuple(ret.headers.items()),
-                                           await self._parse_json(ret, allow_unmodified=True))
+                        return await self._build_raw(ret)
 
                     ret_json = await self._parse_json(ret)
 
@@ -146,10 +145,21 @@ class AiohttpTransport(Transport):
             except Exception as e:
                 raise ProtonAPIUnexpectedError(e)
 
-    async def _parse_json(self, ret, allow_unmodified=False):
-        if allow_unmodified and ret.status == NOT_MODIFIED:
-            return None
+    async def _build_raw(self, ret):
+        response = RawResponse(ret.status,
+                               tuple(ret.headers.items()), None, None)
 
+        if ret.status == NOT_MODIFIED:
+            return response
+
+        response.data = await ret.read()
+
+        if ret.headers['content-type'] != 'application/octet-stream':
+            response.json = await self._parse_json(ret, allow_unmodified=True)
+
+        return response
+
+    async def _parse_json(self, ret, allow_unmodified=False):
         if ret.headers['content-type'] != 'application/json':
             raise ProtonAPINotReachable("API returned non-json results")
         try:

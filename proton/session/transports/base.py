@@ -30,11 +30,13 @@ class RawResponse:
 
     :param status_code: The status code of the response
     :param headers: The headers in the response
-    :param json: The body the response parsed as json
+    :param json: The response parsed as json
+    :param data: The response as a binary blob of bytes
     """
     status_code: int
     headers: Tuple[Tuple[str, Any]]
     json: Optional[dict]
+    data: Optional[bytes]
 
     def find_first_header(self, key, default=None):
         """

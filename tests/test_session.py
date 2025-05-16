@@ -32,6 +32,12 @@ class TestSession(unittest.IsolatedAsyncioTestCase):
         s = Session()
         assert await s.async_api_request('/tests/ping') == {'Code': 1000}
 
+    async def test_raw_ping(self):
+        s = Session()
+        response = await s.async_api_request('/tests/ping', return_raw=True)
+        assert response.json == {'Code': 1000}
+        assert response.data == b'{"Code":1000}'
+
     async def test_session_refresh(self):
         session_state = {
             "UID": "7pqrddjjxmbqpmxcqzg3utlscjgw74xq",

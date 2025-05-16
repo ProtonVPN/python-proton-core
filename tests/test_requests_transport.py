@@ -19,6 +19,7 @@ along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 import unittest
 from io import StringIO
 from unittest.mock import Mock
+import json
 
 import requests
 
@@ -72,12 +73,15 @@ class TestRequestsTransport(unittest.IsolatedAsyncioTestCase):
 
 class TestRequestsTransportRawResult(unittest.IsolatedAsyncioTestCase):
 
-    def _setup(self, status, headers, json):
+    def _setup(self, status, headers, json_value):
         # Mock requests get call.
         req_session = Mock(spec=requests.Session)
         req_session.headers = headers
         req_session.get.return_value.headers = headers
-        req_session.get.return_value.json.return_value = json
+        req_session.get.return_value.json.return_value = json_value
+        if json_value is not None:
+            req_session.get.return_value.content =\
+                json.dumps(json_value).encode('utf-8')
         req_session.get.return_value.status_code = status
 
         session = Session()
@@ -96,6 +100,7 @@ class TestRequestsTransportRawResult(unittest.IsolatedAsyncioTestCase):
 
         # Checks
         assert isinstance(response, RawResponse), "The response should be a RawResponse object."
+        assert response.data == b'{"Code": 1000}', "The response data should not be None."
         assert response.status_code == HTTP_STATUS_OK
         assert response.find_first_header("content-type") == "application/json"
         assert response.json == {"Code": CODE_SUCCESS}
