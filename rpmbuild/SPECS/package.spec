@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.4.0
+%define version 0.5.0
 %define release 1
 
 Prefix: %{_prefix}
