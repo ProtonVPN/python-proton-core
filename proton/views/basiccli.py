@@ -92,8 +92,8 @@ class BasicCLIView(BasicView):
                 login = None
         if ask_password:
             password = getpass.getpass()
-            if password == '':
-                password = None # nosec B105
+            if password == '':  # nosec B105
+                password = None  # nosec B105
         if ask_2fa:
             twofa = input("Please enter your 2FA code: ") # nosec (Python 3 only code)
             if twofa == '' or not twofa.isnumeric():

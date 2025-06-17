@@ -39,7 +39,7 @@ class KeyringBackendJsonFiles(Keyring):
             raise KeyError(key)
 
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError as e:
             self._del_item(key)
@@ -54,7 +54,7 @@ class KeyringBackendJsonFiles(Keyring):
 
     def _set_item(self, key, value):
         try:
-            with open(self.__get_filename_for_key(key), 'w') as f:
+            with open(self.__get_filename_for_key(key), "w", encoding="utf-8") as f:
                 json.dump(value, f)
         except TypeError as e:
             # The value we got is not serializable, thus a type error is thrown,

@@ -23,7 +23,8 @@ class Environment(metaclass=abc.ABCMeta):
     @property
     def name(cls):
         cls_name = cls.__class__.__name__
-        assert cls_name.endswith('Environment'), "Incorrectly named class" # nosec (dev should ensure that to avoid issues)
+        # dev should ensure that to avoid issues
+        assert cls_name.endswith('Environment'), "Incorrectly named class"  # nosec B101 # nosemgrep: gitlab.bandit.B101 # noqa: E501 # pylint: disable=line-too-long
         return cls_name[:-11].lower()
 
     @property

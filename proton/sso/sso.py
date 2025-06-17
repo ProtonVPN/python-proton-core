@@ -71,7 +71,7 @@ class ProtonSSO:
         self._session_data_cache = {}
 
         # This is a global lock, we use it when we modify the indexes
-        self._global_adv_lock = open(os.path.join(self._adv_locks_path, f'proton-sso.lock'), 'w')
+        self._global_adv_lock = open(os.path.join(self._adv_locks_path, "proton-sso.lock"), "w", encoding="utf-8")  # nosemgrep: python.lang.best-practice.open-never-closed.open-never-closed
         self.__keyring_backend = None
         self.__keyring_backend_name = keyring_backend_name
 
@@ -262,7 +262,10 @@ class ProtonSSO:
             # Don't do anything, we don't know the account yet!
             return
 
-        self._adv_locks[account_name] = open(os.path.join(self._adv_locks_path, f'proton-sso-{self.__encode_name(account_name)}.lock'), 'w')
+        self._adv_locks[account_name] = open(  # nosemgrep: python.lang.best-practice.open-never-closed.open-never-closed # pylint: disable=line-too-long
+            os.path.join(self._adv_locks_path, f'proton-sso-{self.__encode_name(account_name)}.lock'),
+            "w", encoding="utf-8"
+        )
         # This is a blocking call. 
         # FIXME: this is Linux specific
         fcntl.flock(self._adv_locks[account_name], fcntl.LOCK_EX)

@@ -168,7 +168,7 @@ class DNSParser:
     @classmethod
     def _build_simple_query(cls, domain: bytes, qtype: int, qclass: int):
         """internal utility to build the simplest DNS request we need"""
-        id: bytes = struct.pack('!H', random.randint(0, 65535))
+        id: bytes = struct.pack('!H', random.randint(0, 65535))  # nosemgrep: gitlab.bandit.B311 # nosec B311 # noqa: E501 # pylint: disable=line-too-long
         qtype: bytes = struct.pack('!H', qtype)
         qclass: bytes = struct.pack('!H', qclass)
 

@@ -1,5 +1,5 @@
 %define unmangled_name proton-core
-%define version 0.5.0
+%define version 0.6.0
 %define release 1
 
 Prefix: %{_prefix}
@@ -56,6 +56,9 @@ python3 setup.py install --single-version-externally-managed -O1 --root=$RPM_BUI
 %defattr(-,root,root)
 
 %changelog
+* Tue Jun 17 2025 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.6.0
+- Ensure CI passed soc tests.
+
 * Wed Jun 4 2025 Luke Titley <luke.titley@proton.ch> 0.5.0
 - Provide access to the binary response when requesting with 'return_raw'.
 

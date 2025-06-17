@@ -45,7 +45,7 @@ WO4BAMcm1u02t4VKw++ttECPt+HUgPUq5pqQWe5Q2cW4TMsE
 =Y4Mw
 -----END PGP PUBLIC KEY BLOCK-----"""
 
-SRP_MODULUS_KEY_FINGERPRINT = "248097092b458509c508dac0350585c4e9518f26"
+SRP_MODULUS_KEY_FINGERPRINT = "248097092b458509c508dac0350585c4e9518f26"  # nosemgrep: gitleak-detect-ignore,generic.secrets.gitleaks.generic-api-key.generic-api-key # pylint: disable=line-too-long
 
 
 def sync_wrapper(f):
@@ -424,7 +424,9 @@ class Session:
 
     async def async_human_verif_request_code(self, address=None, phone=None, additional_headers=None):
         """Request a verification code. Either address (email address) or phone (phone number) should be specified."""
-        assert address is not None ^ phone is not None # nosec (we use email validation by default if both are provided, but it's not super clean if the dev doesn't know about it)
+        # We use email validation by default if both are provided,
+        # but it's not super clean if the dev doesn't know about it
+        assert address is not None ^ phone is not None  # nosec B101 # nosemgrep: gitlab.bandit.B101
 
         if address is not None:
             data = {'Type': 'email', 'Destination': {'Address': address}}
@@ -758,7 +760,8 @@ class Session:
         if e.http_headers.get('retry-after','-').isnumeric():
             await asyncio.sleep(int(e.http_headers.get('retry-after')))
         else:
-            await asyncio.sleep(3+random.random()*5) # nosec (no crypto risk here of using an unsafe generator)
+            # No crypto risk here of using an unsafe generator
+            await asyncio.sleep(3+random.random()*5)  # nosec B311 # nosemgrep: gitlab.bandit.B311
 
     async def __async_api_request_internal(
         self, endpoint,
