@@ -18,8 +18,10 @@ along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import *
+import logging
 
 from .exceptions import ProtonCryptoError, ProtonAPIError, ProtonAPIAuthenticationNeeded, ProtonAPI2FANeeded, ProtonAPIMissingScopeError, ProtonAPIHumanVerificationNeeded
 from .srp import User as PmsrpUser
@@ -31,6 +33,8 @@ import base64
 import random
 
 from ..utils import ExecutionEnvironment
+
+logger = logging.getLogger(__name__)
 
 SRP_MODULUS_KEY = """-----BEGIN PGP PUBLIC KEY BLOCK-----
 
@@ -46,6 +50,30 @@ WO4BAMcm1u02t4VKw++ttECPt+HUgPUq5pqQWe5Q2cW4TMsE
 -----END PGP PUBLIC KEY BLOCK-----"""
 
 SRP_MODULUS_KEY_FINGERPRINT = "248097092b458509c508dac0350585c4e9518f26"  # nosemgrep: gitleak-detect-ignore,generic.secrets.gitleaks.generic-api-key.generic-api-key # pylint: disable=line-too-long
+
+
+@dataclass
+class Fido2AssertionParameters:
+    """
+    Parameters needed to create a FIDO2 assertion for 2FA.
+    These can be obtained from :attr:`Session.supports_fido2`.
+    """
+    challenge: bytes
+    rp_id: str
+    allow_credentials: list[dict]
+    user_verification: str
+
+
+@dataclass
+class Fido2Assertion:
+    """
+    FIDO2 assertion obtained from the security key.
+    These are passed to :meth:`Session.async_validate_2fa_fido2`.
+    """
+    client_data: bytes
+    authenticator_data: bytes
+    signature: bytes
+    credential_id: bytes
 
 
 def sync_wrapper(f):
@@ -279,10 +307,11 @@ class Session:
         finally:
             self._requests_unlock(no_condition_check)
 
-    
-
     async def async_provide_2fa(self, code : str, no_condition_check=False, additional_headers=None) -> bool:
         """Provide Two Factor Authentication Code to the API.
+
+        This method is deprecated, please use :meth:`async_validate_2fa_code`
+        or :meth:`async_validate_2fa_fido2` instead.
         
         :param code: 2FA code
         :type code: str
@@ -292,11 +321,33 @@ class Session:
         :rtype: bool
         :raises ProtonAPIAuthenticationNeeded: if 2FA failed, and the session was reset by the API backend (this is normally the case)
         """
+
+        logger.warning("async_provide_2fa is deprecated, please use async_validate_2fa_code or async_validate_2fa_fido2 instead")
+        
+        return await self.async_validate_2fa_code(code, no_condition_check,
+                                                  additional_headers)
+
+    async def _async_validate_2fa(self, answer: dict, no_condition_check=False, additional_headers=None) -> bool:
+        """
+        Internal function to validate 2FA, either via code or FIDO2.
+
+        Do not use this method directly, use :meth:`async_validate_2fa_code`
+        or :meth:`async_validate_2fa_fido2` instead.
+
+        :param answer: dict containing either the TwoFactorCode or FIDO2 information
+        :type answer: dict
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        :param additional_headers: additional headers to send
+        :type additional_headers: dict, optional
+        :return: True if 2FA succeeded, False otherwise.
+        """
         self._requests_lock(no_condition_check)
         try:
-            ret = await self.__async_api_request_internal('/auth/2fa', {
-                "TwoFactorCode": code
-            }, no_condition_check=True, additional_headers=additional_headers)
+            ret = await self.__async_api_request_internal(
+                '/auth/2fa', answer, no_condition_check=True,
+                additional_headers=additional_headers)
+
             self.__Scopes = ret['Scopes']
             if ret.get('Code') == 1000:
                 self.__2FA = None
@@ -314,6 +365,60 @@ class Session:
             raise
         finally:
             self._requests_unlock(no_condition_check)
+
+    async def async_validate_2fa_code(self,
+                                      code: str,
+                                      no_condition_check=False,
+                                      additional_headers=None) -> bool:
+        """
+        Validate a 2FA code against the API.
+        :param code: 2FA code
+        :type code: str
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        :param additional_headers: additional headers to send
+        :type additional_headers: dict, optional
+        :return: True if 2FA succeeded, False otherwise.
+        :rtype: bool
+        """
+
+        return await self._async_validate_2fa(
+            {"TwoFactorCode": code},
+            no_condition_check,
+            additional_headers)
+
+    async def async_validate_2fa_fido2(self,
+                                       assertion: Fido2Assertion,
+                                       no_condition_check=False,
+                                       additional_headers=None) -> bool:
+        """
+        Validate a FIDO2 assertion against the API.
+        :param assertion: FIDO2 assertion obtained from the security key
+        :type assertion: Fido2Assertion
+        :param no_condition_check: Internal flag to disable locking, defaults to False
+        :type no_condition_check: bool, optional
+        :param additional_headers: additional headers to send
+        :type additional_headers: dict, optional
+        :return: True if 2FA succeeded, False otherwise.
+        :rtype: bool
+        """
+
+        fido2 = self.__2FA["FIDO2"]
+
+        def to_b64(x): return base64.b64encode(x).decode('ascii')
+
+        answer = {
+            "AuthenticationOptions": fido2["AuthenticationOptions"],
+            "ClientData": to_b64(assertion.client_data),
+            "AuthenticatorData": to_b64(assertion.authenticator_data),
+            "Signature": to_b64(assertion.signature),
+            "CredentialID": list(assertion.credential_id),
+        }
+        return await self._async_validate_2fa(
+            {"FIDO2": answer},
+            no_condition_check,
+            additional_headers
+        )
 
     async def async_refresh(self, only_when_refresh_revision_is=None, no_condition_check=False, additional_headers=None):
         """Refresh tokens.
@@ -500,6 +605,8 @@ class Session:
     human_verif_provide_token = sync_wrapper(async_human_verif_provide_token)
     fork = sync_wrapper(async_fork)
     import_fork = sync_wrapper(async_import_fork)
+    validate_2fa_code = sync_wrapper(async_validate_2fa_code)
+    validate_2fa_fido2 = sync_wrapper(async_validate_2fa_fido2)
 
     def register_persistence_observer(self, observer: object):
         """Register an observer that will be notified of any persistent state change of the session
@@ -602,6 +709,34 @@ class Session:
         if self.Scopes is None:
             return False
         return 'twofactor' in self.Scopes
+
+    @property
+    def supports_fido2(self) -> Optional[Fido2AssertionParameters]:
+        """
+        :return: If 2FA is needed, and FIDO2 is supported, return the
+            parameters needed to create a FIDO2 assertion.
+            None otherwise (either 2FA is not needed, or FIDO2 is not supported).
+        :rtype: Fido2AssertionParameters, optional
+        """
+        if not self.__2FA:
+            return None
+
+        # When FIDO2 is not supported, the __2FA property contains:
+        # {'AuthenticationOptions': None, 'RegisteredKeys': []}
+        options = self.__2FA.get('FIDO2', {}).get("AuthenticationOptions")
+        if not options:
+            return None
+
+        public_key = options.get("publicKey")
+        if not public_key:
+            return None
+
+        return Fido2AssertionParameters(
+            challenge=public_key["challenge"],
+            rp_id=public_key["rpId"],
+            allow_credentials=public_key["allowCredentials"],
+            user_verification=public_key["userVerification"]
+        )
 
     @property
     def environment(self):
