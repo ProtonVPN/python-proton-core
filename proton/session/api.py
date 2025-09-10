@@ -30,6 +30,7 @@ from ..loader import Loader
 
 import asyncio
 import base64
+import functools
 import random
 
 from ..utils import ExecutionEnvironment
@@ -77,6 +78,7 @@ class Fido2Assertion:
 
 
 def sync_wrapper(f):
+    @functools.wraps(f)
     def wrapped_f(*a, **kw):
         try:
             loop = asyncio.get_running_loop()
@@ -92,7 +94,7 @@ def sync_wrapper(f):
             return loop.run_until_complete(f(*a, **kw))
         finally:
             loop.close()
-    wrapped_f.__doc__ = f"Synchronous wrapper for :meth:`{f.__name__}`"
+    wrapped_f.__doc__ = f"Synchronous wrapper for :meth:`{f.__name__}`" + "\n\n" + (wrapped_f.__doc__ or "")
     return wrapped_f
 
 class Session:
