@@ -1,6 +1,6 @@
 %define unmangled_name proton-core
 %define pep_625_name proton_core
-%define version 0.7.0
+%define version 0.7.1
 %define release 1
 
 Prefix: %{_prefix}
@@ -59,6 +59,9 @@ Package %{unmangled_name} library.
 %files -n %{name} -f %{pyproject_files}
 
 %changelog
+* Wed Sep 22 2025 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.7.1
+- Update spec file.
+
 * Wed Sep 10 2025 Luke Titley <luke.titley@proton.ch> 0.7.0
 - Add fido2 support for 2fa authorization.
 
