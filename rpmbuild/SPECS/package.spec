@@ -1,6 +1,6 @@
 %define unmangled_name proton-core
 %define pep_625_name proton_core
-%define version 0.7.1
+%define version 0.7.2
 %define release 1
 
 Prefix: %{_prefix}
@@ -59,7 +59,11 @@ Package %{unmangled_name} library.
 %files -n %{name} -f %{pyproject_files}
 
 %changelog
-* Wed Sep 22 2025 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.7.1
+
+* Wed Sep 24 2025 Xavier Piroux <xavier.piroux@proton.ch> 0.7.2
+- improve docstring of sync wrapper functions
+
+* Mon Sep 22 2025 Alexandru Cheltuitor <alexandru.cheltuitor@proton.ch> 0.7.1
 - Update spec file.
 
 * Wed Sep 10 2025 Luke Titley <luke.titley@proton.ch> 0.7.0
