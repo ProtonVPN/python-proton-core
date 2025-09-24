@@ -207,18 +207,22 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
                 self._requests_unlock()
 
         sso = ProtonSSO()
-        while len(sso.sessions) > 0:
-            assert await sso.get_default_session().async_logout()
 
-        s = sso.get_default_session(SessionWithAdditionalData)
+        # cleanup
+        s = sso.get_session('pro')
+        if s:
+            assert await s.async_logout()
+
+        s = sso.get_session('pro', override_class=SessionWithAdditionalData)
         assert await s.async_authenticate('pro','pro')
         await s.set_additional_data('abc123')
 
-
-        s = sso.get_default_session(SessionWithAdditionalData)
+        # base check: data are persisted
+        s = sso.get_session('pro', SessionWithAdditionalData)
         assert s.additional_data == 'abc123'
 
-        s = sso.get_default_session()
+        # base check: data are missing if not loading correct class
+        s = sso.get_session('pro')
         with self.assertRaises(AttributeError):
             assert s.additional_data == 'abc123'
 
@@ -227,5 +231,5 @@ class TestProtonSSO(unittest.IsolatedAsyncioTestCase):
         s._requests_unlock()
 
         # We should still have additional data
-        s = sso.get_default_session(SessionWithAdditionalData)
+        s = sso.get_session('pro', SessionWithAdditionalData)
         assert s.additional_data == 'abc123'
