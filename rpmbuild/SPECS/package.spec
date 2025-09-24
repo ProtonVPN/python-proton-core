@@ -1,6 +1,6 @@
 %define unmangled_name proton-core
 %define pep_625_name proton_core
-%define version 0.7.2
+%define version 0.7.3
 %define release 1
 
 Prefix: %{_prefix}
@@ -59,6 +59,10 @@ Package %{unmangled_name} library.
 %files -n %{name} -f %{pyproject_files}
 
 %changelog
+
+* Wed Sep 24 2025 Xavier Piroux <xavier.piroux@proton.ch> 0.7.3
+- CLI tool proton.sso : add optional argument --keyring
+- fix session.__setstate__() : missing to restore 2FA / refresh_revision
 
 * Wed Sep 24 2025 Xavier Piroux <xavier.piroux@proton.ch> 0.7.2
 - improve docstring of sync wrapper functions

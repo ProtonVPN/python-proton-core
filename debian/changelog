@@ -1,3 +1,10 @@
+proton-core (0.7.3) unstable; urgency=medium
+
+  * CLI tool proton.sso : add optional argument --keyring
+  * fix session.__setstate__() : missing to restore 2FA / refresh_revision
+
+ -- Xavier Piroux <xavier.piroux@proton.ch>  Wed, 24 Sep 2025 14:12:41 +0200
+
 proton-core (0.7.2) unstable; urgency=medium
 
   * improve docstring of sync wrapper functions
