@@ -35,7 +35,7 @@ class ProtonSSOPresenterCredentialLogicState(enum.Enum):
 
 
 class ProtonSSOPresenter:
-    def __init__(self, view : BasicView, appversion=None, user_agent=None):
+    def __init__(self, view : BasicView, appversion=None, user_agent=None, keyring=None):
         from .sso import ProtonSSO
 
         self._view = view
@@ -48,6 +48,8 @@ class ProtonSSOPresenter:
             kwargs_sso["appversion"] = appversion
         if user_agent is not None:
             kwargs_sso["user_agent"] = user_agent
+        if keyring is not None:
+            kwargs_sso["keyring_backend_name"] = keyring
         self._sso = ProtonSSO(**kwargs_sso)
 
     def set_session(self, account_name = None):
@@ -142,6 +144,7 @@ def main():
     parser = argparse.ArgumentParser('proton-sso', description="Tool to manage user SSO sessions")
     parser.add_argument('--appversion', help="App version")
     parser.add_argument('--user-agent', help="User Agent")
+    parser.add_argument('--keyring', help="Keyring (if not set, will select default keyring)")
     subparsers = parser.add_subparsers(help='action', dest='action', required=True)
 
     parser_login = subparsers.add_parser('login', help='Sign into an account')
@@ -169,7 +172,7 @@ def main():
     from proton.loader import Loader
 
     view = Loader.get('basicview')()
-    presenter = ProtonSSOPresenter(view, appversion=args.appversion, user_agent=args.user_agent)
+    presenter = ProtonSSOPresenter(view, appversion=args.appversion, user_agent=args.user_agent, keyring=args.keyring)
 
     # All action except list require an active account
     if args.action != 'list':
