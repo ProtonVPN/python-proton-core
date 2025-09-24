@@ -776,14 +776,25 @@ class Session:
 
     def __setstate__(self, data):
         # If we're running an unpickle, then the object constructor hasn't been called, so we need to populate __dict__
-        for attr, default in (('gnupg_for_modulus', None), ('can_run_requests', None), ('transport', None), ('persistence_observers', [])):
-            if '_Session__' + attr not in self.__dict__:
-                self.__dict__['_Session__' + attr] = default
+
+        # self.__appversion is the most basic attribute : if missing, so constructor has not been called
+        is_init_called = "_Session__appversion" in self.__dict__
+        if not is_init_called:
+            for attr, default in (('gnupg_for_modulus', None), ('can_run_requests', None), ('transport', None), ('persistence_observers', [])):
+                attrname = '_Session__' + attr
+                self.__dict__[attrname] = default
 
         # Restore data from LastUseData if we don't have it already (allow pickle load)
-        for attr, default in (('2FA', None), ('appversion', 'Other'), ('user_agent', 'None'), ('refresh_revision', 0)):
-            if '_Session__' + attr not in self.__dict__:
-                self.__dict__['_Session__' + attr] = data.get('LastUseData', {}).get(attr, default)
+        last_use_data = data.get('LastUseData', {})
+        # `appversion` and `user_agent` are set in constructor (directly or via SSO class) : keep them as much as possible (in case of client version update, we want to have the correct version)
+        if not is_init_called:
+            for attr, default in (('appversion', 'Other'), ('user_agent', 'None')):
+                attrname = '_Session__' + attr
+                self.__dict__[attrname] = last_use_data.get(attr, default)
+        # `2FA` and `refresh_revision` : need to be restored
+        for attr, default in (('2FA', None), ('refresh_revision', 0)):
+            attrname = '_Session__' + attr
+            self.__dict__[attrname] = last_use_data.get(attr, default)
         
         # We don't pickle the transport, so if not set just use the default
         if '_Session__transport_factory' not in self.__dict__:
