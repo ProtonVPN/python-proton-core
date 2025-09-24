@@ -93,10 +93,12 @@ class ProtonSSOPresenter:
                             self._view.display_error("Invalid credentials!")
                             # Remain in NEEDS_AUTHENTICATE state
                     elif state == ProtonSSOPresenterCredentialLogicState.NEEDS_TWOFA:
+                        if self._session.supports_fido2:
+                            self._view.display_notice("This session supports 2FA via FIDO2 but proton.sso is a simple tool not supporting it, sorry => 2FA is likely to fail if it's the only available 2FA...")
                         account_name, password, twofa = self._view.ask_credentials(False, False, True)
                         if twofa is None:
                             break
-                        ret = self._session.provide_2fa(twofa)
+                        ret = self._session.validate_2fa_code(twofa)
                         if ret:
                             state = ProtonSSOPresenterCredentialLogicState.CALL_BASE_FUNCTION
                         else:
