@@ -39,7 +39,9 @@ def bcrypt_b64_encode(s):  # The joy of bcrypt
 def hash_password_3(hash_class, password, salt, modulus):
     salt = (salt + b"proton")[:16]
     salt = bcrypt_b64_encode(salt)[:22]
-    hashed = bcrypt.hashpw(password, b"$2y$10$" + salt)
+    # Manually truncate the password to maximum bcrypt accepted length
+    MAX_BCRYPT_PASSWORD_BYTES = 72
+    hashed = bcrypt.hashpw(password[:MAX_BCRYPT_PASSWORD_BYTES], b"$2y$10$" + salt)
     return hash_class(hashed + modulus).digest()
 
 

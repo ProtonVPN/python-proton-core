@@ -1,3 +1,9 @@
+proton-core (0.7.4) unstable; urgency=medium
+
+  * truncate passwords longer than 72 bytes
+
+ -- Elena Svilpe <elena.svilpe@proton.ch>  Wed, 22 Apr 2026 15:55:24 +0200
+
 proton-core (0.7.3) unstable; urgency=medium
 
   * CLI tool proton.sso : add optional argument --keyring

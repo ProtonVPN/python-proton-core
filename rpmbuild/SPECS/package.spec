@@ -1,6 +1,6 @@
 %define unmangled_name proton-core
 %define pep_625_name proton_core
-%define version 0.7.3
+%define version 0.7.4
 %define release 1
 
 Prefix: %{_prefix}
@@ -59,6 +59,10 @@ Package %{unmangled_name} library.
 %files -n %{name} -f %{pyproject_files}
 
 %changelog
+
+ -- Elena Svilpe <elena.svilpe@proton.ch>  Wed, 22 Apr 2026 15:55:24 +0200
+* Wed, 22 Apr 2026 Elena Svilpe <elena.svilpe@proton.ch> 0.7.3
+- truncate passwords longer than 72 bytes
 
 * Wed Sep 24 2025 Xavier Piroux <xavier.piroux@proton.ch> 0.7.3
 - CLI tool proton.sso : add optional argument --keyring
