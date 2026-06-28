@@ -20,7 +20,7 @@ import base64
 import bcrypt
 import os
 
-from proton.session.exceptions import ProtonUnsupportedAuthVersionError
+from proton.session.exceptions import ProtonUnsupportedAuthVersionError, ProtonCryptoPasswordTooLongError
 
 
 PM_VERSION = 4
@@ -39,7 +39,13 @@ def bcrypt_b64_encode(s):  # The joy of bcrypt
 def hash_password_3(hash_class, password, salt, modulus):
     salt = (salt + b"proton")[:16]
     salt = bcrypt_b64_encode(salt)[:22]
-    hashed = bcrypt.hashpw(password, b"$2y$10$" + salt)
+    try:
+        hashed = bcrypt.hashpw(password, b"$2y$10$" + salt)
+    except ValueError as e:
+        raise ProtonCryptoPasswordTooLongError(
+            "Password exceeds bcrypt's 72-byte limit. "
+            "Please shorten your password to at most 72 bytes."
+        ) from e
     return hash_class(hashed + modulus).digest()
 
 
