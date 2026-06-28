@@ -33,6 +33,11 @@ class ProtonCryptoError(ProtonError):
     In general this has to be handled as being fatal, as something is super-wrong."""
 
 
+class ProtonCryptoPasswordTooLongError(ProtonCryptoError):
+    """Exception raised when the password exceeds bcrypt's 72-byte limit.
+    The user should shorten their password to at most 72 bytes."""
+
+
 class ProtonUnsupportedAuthVersionError(ProtonCryptoError):
     """When the auth_version returned by the API is lower then what is currently supported.
     This is usually fixed with a login via the webclient."""
