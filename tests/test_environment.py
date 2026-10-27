@@ -46,6 +46,7 @@ def runtime_mock(tmp_path):
 
 
 @patch("proton.utils.environment.BaseDirectory")
+@patch("proton.utils.environment.sys.platform", "linux")
 @patch("proton.utils.environment.os.getuid")
 def test_successfully_create_product_dirs_when_creating_new_product_class(
    get_uid_mock, base_directory_mock, config_mock, cache_mock, runtime_mock
@@ -62,6 +63,30 @@ def test_successfully_create_product_dirs_when_creating_new_product_class(
     assert MockEnv().path_cache == str(cache_mock / "Proton" / "mock")
     assert MockEnv().path_logs == str(cache_mock / "Proton" / "logs" / "mock")
     assert MockEnv().path_runtime == str(runtime_mock / "Proton" / "mock")
+
+
+@pytest.mark.parametrize("base_directory", [Mock(), None])
+@patch("proton.utils.environment.sys.platform", "darwin")
+@patch("proton.utils.environment.os.getuid")
+def test_runtime_dir_is_the_temporary_dir_on_macos(
+   get_uid_mock, base_directory, config_mock, cache_mock, tmp_path, monkeypatch
+):
+    get_uid_mock.return_value = 1
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    monkeypatch.setattr("tempfile.tempdir", None)
+    monkeypatch.setattr("proton.utils.environment.BaseDirectory", base_directory)
+    if base_directory:
+        base_directory.xdg_config_home = config_mock
+        base_directory.xdg_cache_home = cache_mock
+
+    class MockEnv(ProductExecutionEnvironment):
+        PRODUCT = "mock"
+
+    assert MockEnv().path_runtime == str(tmp_path / "Proton" / "mock")
+    if base_directory:
+        base_directory.get_runtime_dir.assert_not_called()
 
 
 def test_raises_exception_when_creating_new_product_class_and_not_setting_product_class_property():

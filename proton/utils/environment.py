@@ -19,6 +19,8 @@ along with ProtonVPN.  If not, see <https://www.gnu.org/licenses/>.
 from .metaclasses import Singleton
 import os
 import shutil
+import sys
+import tempfile
 # Try to get the BaseDirectory module
 try:
     from xdg import BaseDirectory
@@ -88,7 +90,6 @@ class ExecutionEnvironment(metaclass=Singleton):
         if BaseDirectory:
             config_home = BaseDirectory.xdg_config_home
             cache_home = BaseDirectory.xdg_cache_home
-            runtime_dir = BaseDirectory.get_runtime_dir()
         else:
         # Otherwise use default constructed from $HOME environment variable
             home = os.environ.get('HOME', None)
@@ -97,6 +98,13 @@ class ExecutionEnvironment(metaclass=Singleton):
 
             config_home = os.path.join(home, '.config')
             cache_home = os.path.join(home, '.cache')
+
+        if sys.platform == 'darwin' and 'XDG_RUNTIME_DIR' not in os.environ:
+            # macOS has neither, but its temporary directory is private to the user
+            runtime_dir = tempfile.gettempdir()
+        elif BaseDirectory:
+            runtime_dir = BaseDirectory.get_runtime_dir()
+        else:
             runtime_dir = f'/run/user/{os.getuid()}'
 
         return config_home, cache_home, runtime_dir
