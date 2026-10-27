@@ -43,7 +43,17 @@ dlls = list()
 
 platform = sys.platform
 if platform == 'darwin':
-    dlls.append(ctypes.cdll.LoadLibrary('libssl.dylib'))
+    # macOS aborts the process when the unversioned libssl.dylib is loaded,
+    # so only use a Homebrew OpenSSL; without one, the pure Python SRP is used.
+    for d in ('/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib',
+              '/usr/local/opt/openssl@3/lib/libssl.3.dylib'):
+        try:
+            dlls.append(ctypes.cdll.LoadLibrary(d))
+            break
+        except OSError:
+            pass
+    else:
+        raise ImportError('No OpenSSL found')
 elif 'win' in platform:
     for d in ('libeay32.dll', 'libssl32.dll', 'ssleay32.dll'):
         try:
